@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Tab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup-shell">
+    <header class="popup-header">
+      <div>
+        <p class="popup-kicker">Nexus Tab</p>
+        <h1>Quick Search</h1>
+      </div>
+      <button id="openNewTabBtn" class="icon-btn" type="button" aria-label="Open Nexus Tab">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+      </button>
+    </header>
+
+    <form id="popupSearchForm" class="popup-search">
+      <select id="popupEngineSelect" aria-label="Search engine"></select>
+      <input id="popupSearchInput" type="text" placeholder="Search anything..." autocomplete="off">
+    </form>
+
+    <section>
+      <div class="section-title">Quick Links</div>
+      <div id="popupQuickLinks" class="popup-links"></div>
+    </section>
+
+    <section>
+      <div class="section-title">Top Sites</div>
+      <div id="popupTopSites" class="popup-sites"></div>
+    </section>
+
+    <footer class="popup-footer">
+      <button id="openSettingsBtn" class="text-btn" type="button">Settings</button>
+      <button id="openHelpBtn" class="text-btn" type="button">Help</button>
+    </footer>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

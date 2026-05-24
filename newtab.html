@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.google.com">
+  <link rel="dns-prefetch" href="https://suggestqueries.google.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="custom-bg" id="customBg"></div>
+  <div class="vignette"></div>
+
+  <!-- Incognito Badge -->
+  <div class="incognito-badge" id="incognitoBadge" style="display:none;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    Incognito
+  </div>
+
+  <!-- Settings Gear -->
+  <button class="help-btn" id="helpBtn" aria-label="Help">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  </button>
+
+  <button class="settings-btn" id="settingsBtn" aria-label="Settings">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+
+  <!-- Settings Panel Overlay -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <h2>Settings</h2>
+      <button class="settings-close" id="settingsClose" aria-label="Close settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings sections">
+      <button class="settings-tab active" type="button" data-settings-tab="appearance" role="tab" aria-selected="true">Appearance</button>
+      <button class="settings-tab" type="button" data-settings-tab="links" role="tab" aria-selected="false">Links</button>
+      <button class="settings-tab" type="button" data-settings-tab="engines" role="tab" aria-selected="false">Engines</button>
+      <button class="settings-tab" type="button" data-settings-tab="data" role="tab" aria-selected="false">Data</button>
+    </div>
+
+    <div class="settings-body">
+      <!-- Theme & Appearance -->
+      <div class="settings-section" data-settings-panel="appearance">
+        <h3 class="settings-section-title">Appearance</h3>
+        <label class="toggle-row"><input type="checkbox" id="toggleLightMode"><span>Light Mode</span></label>
+        <h3 class="settings-section-title settings-subtitle">Density</h3>
+        <div class="segmented-control" id="densityControl" aria-label="Layout density">
+          <button type="button" data-density="compact">Compact</button>
+          <button type="button" data-density="balanced">Balanced</button>
+          <button type="button" data-density="spacious">Spacious</button>
+        </div>
+        <div class="settings-actions" style="margin-top:0.75rem; margin-bottom: 1.25rem;">
+          <button class="btn-secondary" id="uploadBgBtn">Set Background Image</button>
+          <button class="btn-danger" id="clearBgBtn" style="display:none;">Clear Background</button>
+          <input type="file" id="bgInput" accept="image/*" style="display:none">
+        </div>
+        <div class="range-row">
+          <label for="bgDimInput">Background Dim</label>
+          <input type="range" id="bgDimInput" min="20" max="92" step="1">
+        </div>
+        <div class="range-row">
+          <label for="bgBlurInput">Background Blur</label>
+          <input type="range" id="bgBlurInput" min="0" max="18" step="1">
+        </div>
+        <label class="select-row">
+          <span>Background Position</span>
+          <select id="bgPositionSelect">
+            <option value="center">Center</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </label>
+        <h3 class="settings-section-title">Accent Color</h3>
+        <div class="color-picker" id="colorPicker">
+          <button class="color-swatch" data-color="emerald" data-hex="#3ecf8e" style="background:#3ecf8e" aria-label="Emerald"></button>
+          <button class="color-swatch" data-color="blue" data-hex="#60a5fa" style="background:#60a5fa" aria-label="Blue"></button>
+          <button class="color-swatch" data-color="purple" data-hex="#a78bfa" style="background:#a78bfa" aria-label="Purple"></button>
+          <button class="color-swatch" data-color="amber" data-hex="#f0c674" style="background:#f0c674" aria-label="Amber"></button>
+          <button class="color-swatch" data-color="rose" data-hex="#f472b6" style="background:#f472b6" aria-label="Rose"></button>
+          <button class="color-swatch" data-color="cyan" data-hex="#22d3ee" style="background:#22d3ee" aria-label="Cyan"></button>
+        </div>
+      </div>
+
+      <!-- Preferences -->
+      <div class="settings-section" data-settings-panel="appearance">
+        <h3 class="settings-section-title">Display</h3>
+        <label class="toggle-row"><input type="checkbox" id="toggleGreeting" checked><span>Greeting</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleQuickLinks" checked><span>Quick Links</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleRecentSearches" checked><span>Recent Searches</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleSuggestions" checked><span>Search Suggestions</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleQuote" checked><span>Daily Quote</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleEngineChips" checked><span>Engine Chips</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleWidgetDock" checked><span>Widget Dock</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleHistoryResults" checked><span>History Results</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleTopSitesResults" checked><span>Top Sites Results</span></label>
+      </div>
+
+      <!-- Quick Links Management -->
+      <div class="settings-section" data-settings-panel="links" hidden>
+        <h3 class="settings-section-title">Quick Links</h3>
+        <div id="quickLinksManager" class="quick-links-manager"></div>
+        <button class="btn-secondary" id="addQuickLinkBtn">+ Add Link</button>
+      </div>
+
+      <!-- Custom Engines -->
+      <div class="settings-section" data-settings-panel="engines" hidden>
+        <h3 class="settings-section-title">Custom Search Engines</h3>
+        <div id="customEnginesManager" class="custom-engines-manager"></div>
+        <button class="btn-secondary" id="addCustomEngineBtn">+ Add Engine</button>
+      </div>
+
+      <!-- Usage Stats -->
+      <div class="settings-section" data-settings-panel="engines" hidden>
+        <h3 class="settings-section-title">Your Stats</h3>
+        <div id="usageStats" class="usage-stats"></div>
+      </div>
+
+      <!-- Data -->
+      <div class="settings-section" data-settings-panel="data" hidden>
+        <h3 class="settings-section-title">Data</h3>
+        <div class="settings-actions">
+          <button class="btn-secondary" id="exportBtn">Export Settings</button>
+          <button class="btn-secondary" id="importBtn">Import Settings</button>
+          <input type="file" id="importFile" accept=".json" style="display:none">
+          <button class="btn-danger" id="clearDataBtn">Clear All Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container">
+    <div class="search-section">
+
+      <!-- Greeting -->
+      <div class="greeting-section" id="greetingSection">
+        <p class="greeting" id="greeting"></p>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="quick-links" id="quickLinks"></div>
+
+      <!-- Engine label -->
+      <p class="engine-label" id="engineLabel">SEARCH WITH GOOGLE</p>
+
+      <!-- Search bar -->
+      <div class="search-wrapper" id="searchWrapper">
+        <div class="search-box">
+          <span id="enginePrefix" class="engine-prefix" aria-hidden="true"></span>
+          <span class="engine-prefix-divider" aria-hidden="true"></span>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search anything..." autocomplete="off" spellcheck="false">
+        </div>
+        <div class="autocomplete-dropdown" id="autocompleteDropdown" role="listbox"></div>
+      </div>
+
+      <!-- Hint Bar -->
+      <div class="hint-bar" id="hintBar"></div>
+
+      <!-- Recent Searches -->
+      <div class="recent-searches" id="recentSearches" style="display:none;">
+        <div class="recent-header">
+          <span class="recent-title">Recent</span>
+          <button class="recent-clear" id="clearRecent">Clear all</button>
+        </div>
+        <div class="recent-items" id="recentItems"></div>
+      </div>
+
+      <!-- Engine chips -->
+      <div class="engine-chips" id="engineChips" role="radiogroup" aria-label="Search engine selection"></div>
+
+      <!-- Daily Quote -->
+      <div class="quote-section" id="quoteSection">
+        <p class="quote-text" id="quoteText"></p>
+        <p class="quote-author" id="quoteAuthor"></p>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="widget-dock" id="widgetDock" aria-label="Productivity widgets">
+    <!-- Sticky Notes Widget -->
+    <div class="notes-widget">
+      <button class="notes-toggle dock-toggle" id="notesToggle" aria-label="Toggle notes">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </button>
+      <div class="notes-panel" id="notesPanel">
+        <textarea class="notes-textarea" id="notesTextarea" placeholder="Quick notes..."></textarea>
+      </div>
+    </div>
+
+    <!-- Pomodoro Timer Widget -->
+    <div class="timer-widget">
+      <button class="timer-toggle dock-toggle" id="timerToggle" aria-label="Toggle timer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+      <div class="timer-panel" id="timerPanel">
+        <div class="timer-display" id="timerDisplay">25:00</div>
+        <div class="timer-presets">
+          <button class="timer-preset active" data-minutes="25">Focus</button>
+          <button class="timer-preset" data-minutes="5">Short</button>
+          <button class="timer-preset" data-minutes="15">Long</button>
+        </div>
+        <div class="timer-controls">
+          <button class="timer-btn" id="timerStartBtn">Start</button>
+          <button class="timer-btn" id="timerResetBtn">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- To-Do Widget -->
+    <div class="todo-widget">
+      <button class="todo-toggle dock-toggle" id="todoToggle" aria-label="Toggle to-do list">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </button>
+      <div class="todo-panel" id="todoPanel">
+        <div class="todo-header">Tasks</div>
+        <div class="todo-list" id="todoList"></div>
+        <form class="todo-input-group" id="todoForm">
+          <input type="text" class="todo-input" id="todoInput" placeholder="Add a task..." autocomplete="off">
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Quick Link Modal -->
+  <div class="modal-overlay" id="quickLinkModal" style="display:none;">
+    <div class="modal">
+      <h3 class="modal-title" id="quickLinkModalTitle">Add Quick Link</h3>
+      <input type="text" class="modal-input" id="qlName" placeholder="Name (e.g. GitHub)">
+      <input type="url" class="modal-input" id="qlUrl" placeholder="URL (e.g. https://github.com)">
+      <div class="modal-actions">
+        <button class="btn-secondary" id="qlCancel">Cancel</button>
+        <button class="btn-primary" id="qlSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Custom Engine Modal -->
+  <div class="modal-overlay" id="engineModal" style="display:none;">
+    <div class="modal">
+      <h3 class="modal-title" id="engineModalTitle">Add Custom Engine</h3>
+      <input type="text" class="modal-input" id="ceName" placeholder="Name (e.g. Notion)">
+      <input type="text" class="modal-input" id="cePrefix" placeholder="Prefix (e.g. nt)">
+      <input type="url" class="modal-input" id="ceUrl" placeholder="Search URL (e.g. https://notion.so/search?q=)">
+      <p class="modal-help">URL should end with the query parameter (e.g. ?q= or ?search=)</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="ceCancel">Cancel</button>
+        <button class="btn-primary" id="ceSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command Palette -->
+  <div class="command-overlay" id="commandOverlay" style="display:none;">
+    <div class="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <input type="text" id="commandInput" class="command-input" placeholder="Type a command..." autocomplete="off">
+      <div id="commandResults" class="command-results"></div>
+    </div>
+  </div>
+
+  <!-- Help / Onboarding -->
+  <div class="help-overlay" id="helpOverlay" style="display:none;">
+    <div class="help-panel" role="dialog" aria-modal="true" aria-label="Nexus Tab help">
+      <div class="help-panel-header">
+        <h2>Nexus Tab</h2>
+        <button class="settings-close" id="helpClose" aria-label="Close help">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="help-grid">
+        <div><kbd>/</kbd><span>Focus search</span></div>
+        <div><kbd>←</kbd> <kbd>→</kbd><span>Switch engine</span></div>
+        <div><kbd>↑</kbd> <kbd>↓</kbd><span>Switch category</span></div>
+        <div><kbd>Esc</kbd><span>Clear search</span></div>
+        <div><kbd>Enter</kbd><span>Search</span></div>
+        <div><kbd>Shift</kbd>+<kbd>Enter</kbd><span>Multi-search category</span></div>
+        <div><kbd>Ctrl</kbd> <kbd>K</kbd><span>Command palette</span></div>
+        <div><kbd>gh react</kbd><span>Search with a prefix</span></div>
+        <div><kbd>set gh</kbd><span>Set default engine</span></div>
+        <div><kbd>More</kbd><span>Open full engine catalog</span></div>
+      </div>
+      <button class="btn-primary help-start-btn" id="helpStartBtn">Start Using Nexus</button>
+    </div>
+  </div>
+
+  <script src="quotes.js" defer></script>
+  <script src="engine-icons.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
