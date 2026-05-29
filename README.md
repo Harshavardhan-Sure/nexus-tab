@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
 [![Manifest Version](https://img.shields.io/badge/Manifest-V3-blue.svg)](manifest.json)
-[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](manifest.json)
+[![Version](https://img.shields.io/badge/Version-1.2.0-purple.svg)](manifest.json)
 
 **Nexus Tab** is a beautiful, distraction-free dashboard that replaces your default new tab page. It helps you search faster and stay organized with built-in productivity tools like a Pomodoro timer, quick notes, and a checklist.
 
