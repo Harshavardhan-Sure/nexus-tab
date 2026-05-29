@@ -1,6 +1,5 @@
 /* ============================================
    Engine SVG Icons
-   Source: github.com/teja2495/my-toolkit-chrome
    Engines without SVGs fall back to Google Favicon API
    ============================================ */
 
