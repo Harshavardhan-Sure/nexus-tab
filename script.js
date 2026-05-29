@@ -81,6 +81,9 @@ function cacheDom() {
     engineLabel:    $('engineLabel'),
     dropdown:       $('autocompleteDropdown'),
     hintBar:        $('hintBar'),
+    clockSection:   $('clockSection'),
+    clockTime:      $('clockTime'),
+    clockDate:      $('clockDate'),
     greetingSection: $('greetingSection'),
     greeting:       $('greeting'),
     quickLinks:     $('quickLinks'),
@@ -149,6 +152,7 @@ function init() {
   applyLayoutDensity();
   applyBackgroundControls();
   loadBackground();
+  startClock();
   renderGreeting();
   updateLabel();
   updateSearchEnginePrefix();
@@ -375,31 +379,32 @@ function loadCustomEngines() {
 function getGreeting() {
   const hour = new Date().getHours();
   const day = new Date().getDay();
+  const name = settings.customName || 'Harsha';
 
   if (Math.random() < 0.2) {
-    const generics = ['Welcome, Harsha!', "What\u2019s on your mind, Harsha?"];
+    const generics = [`Welcome, ${name}!`, `What’s on your mind, ${name}?`];
     return generics[Math.floor(Math.random() * generics.length)];
   }
 
   const greetings = [];
 
   if (hour >= 5 && hour < 12) {
-    greetings.push('Good morning, Harsha!');
+    greetings.push(`Good morning, ${name}!`);
   } else if (hour >= 12 && hour < 18) {
-    greetings.push('Good afternoon, Harsha!');
+    greetings.push(`Good afternoon, ${name}!`);
   } else if (hour >= 18 && hour < 20) {
-    greetings.push('Good evening, Harsha!', 'Evening, Harsha!');
+    greetings.push(`Good evening, ${name}!`, `Evening, ${name}!`);
   } else if (hour >= 23) {
     greetings.push('Hello, night owl!');
   } else {
-    greetings.push('Good night, Harsha!');
+    greetings.push(`Good night, ${name}!`);
   }
 
-  if (day === 1 && hour < 16) greetings.push('Happy Monday, Harsha!');
-  else if (day === 2) greetings.push('Happy Tuesday, Harsha!');
-  else if (day === 5 && hour < 16) greetings.push('Happy Friday, Harsha!');
-  else if (day === 5 && hour >= 16) greetings.push('Happy Weekend, Harsha!');
-  else if (day === 0 || day === 6) greetings.push('Happy Weekend, Harsha!');
+  if (day === 1 && hour < 16) greetings.push(`Happy Monday, ${name}!`);
+  else if (day === 2) greetings.push(`Happy Tuesday, ${name}!`);
+  else if (day === 5 && hour < 16) greetings.push(`Happy Friday, ${name}!`);
+  else if (day === 5 && hour >= 16) greetings.push(`Happy Weekend, ${name}!`);
+  else if (day === 0 || day === 6) greetings.push(`Happy Weekend, ${name}!`);
 
   return greetings[Math.floor(Math.random() * greetings.length)];
 }
@@ -461,6 +466,7 @@ function renderQuote() {
 //  VISIBILITY SETTINGS
 // ══════════════════════════════════════════════════════════════════════
 const TOGGLE_MAP = {
+  toggleClock:           'showClock',
   toggleGreeting:        'showGreeting',
   toggleQuickLinks:     'showQuickLinks',
   toggleRecentSearches: 'showRecentSearches',
@@ -470,9 +476,13 @@ const TOGGLE_MAP = {
   toggleWidgetDock:     'showWidgetDock',
   toggleHistoryResults: 'showHistoryResults',
   toggleTopSitesResults:'showTopSitesResults',
+  toggleUnsplash:        'useUnsplash',
 };
 
 function applyVisibilitySettings() {
+  if (dom.clockSection) {
+    dom.clockSection.style.display = settings.showClock ? '' : 'none';
+  }
   dom.greetingSection.style.display = settings.showGreeting ? '' : 'none';
   dom.quickLinks.style.display   = settings.showQuickLinks ? '' : 'none';
   dom.quoteSection.style.display = settings.showQuote ? '' : 'none';
@@ -483,6 +493,10 @@ function applyVisibilitySettings() {
     const el = $(elId);
     if (el) el.checked = settings[key];
   });
+
+  if (dom.customNameInput) {
+    dom.customNameInput.value = settings.customName || '';
+  }
 
   syncRecentSearchesVisibility();
 }
@@ -622,6 +636,7 @@ function renderChips() {
     fragment.appendChild(catalog);
   }
 
+  document.body.classList.toggle('catalog-open', engineCatalogOpen);
   dom.engineChips.appendChild(fragment);
 }
 
@@ -1947,6 +1962,21 @@ function bindEvents() {
     });
   });
 
+  if (dom.customNameInput) {
+    dom.customNameInput.addEventListener('input', () => {
+      settings.customName = dom.customNameInput.value.trim();
+      saveSettings();
+      renderGreeting();
+    });
+  }
+
+  const unsplashToggle = $('toggleUnsplash');
+  if (unsplashToggle) {
+    unsplashToggle.addEventListener('change', () => {
+      loadBackground();
+    });
+  }
+
   dom.densityControl.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-density]');
     if (!btn) return;
@@ -2180,8 +2210,70 @@ async function saveBackground(dataUrl) {
   } catch (err) { console.error('Error saving background', err); }
 }
 
+// Central Digital Clock Logic
+function startClock() {
+  updateClock();
+  setInterval(updateClock, 1000);
+}
+
+function updateClock() {
+  const now = new Date();
+  
+  // Format Time
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  
+  if (dom.clockTime) {
+    dom.clockTime.innerHTML = `${hours}:${minutes}<span class="clock-ampm">${ampm}</span>`;
+  }
+  
+  // Format Date (e.g., "Monday, June 1")
+  const options = { weekday: 'long', month: 'long', day: 'numeric' };
+  const dateStr = now.toLocaleDateString('en-US', options);
+  if (dom.clockDate) {
+    dom.clockDate.textContent = dateStr;
+  }
+}
+
+// Curated list of premium Unsplash photo IDs for account-free daily rotation
+const UNSPLASH_WALLPAPERS = [
+  'photo-1470071459604-3b5ec3a7fe05', // Nature green hills
+  'photo-1507525428034-b723cf961d3e', // Sunset beach
+  'photo-1441974231531-c6227db76b6e', // Forest sun rays
+  'photo-1447752875215-b2761acb3c5d', // Woodland path
+  'photo-1472214222541-d510753a8707', // Valley field
+  'photo-1469474968028-56623f02e42e', // Mountain hiker landscape
+  'photo-1501854140801-50d01698950b', // Aerial lush hills
+  'photo-1465146344425-f00d5f5c8f07', // Flower field sunset
+  'photo-1513836279014-a89f7a76ae86', // High angle forest mist
+  'photo-1475924156734-496f6cac6ec1', // Sunrise beach wave
+  'photo-1433832597046-4f10e10ac764', // Hot air balloons Cappadocia
+  'photo-1506744038136-46273834b3fb', // Yosemite Valley
+  'photo-1443636955827-230f8823b6cf', // Minimalist sand dune
+  'photo-1518173946687-a4c8a383392e', // Macro raindrops leaf
+  'photo-1470770841072-f978cf4d019e', // Scenic lake dock
+];
+
+function getDailyUnsplashWallpaper() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const photoId = UNSPLASH_WALLPAPERS[dayOfYear % UNSPLASH_WALLPAPERS.length];
+  return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1920&q=80`;
+}
+
 async function loadBackground() {
-  if (!settings.hasBackground) return;
+  if (settings.useUnsplash) {
+    const dailyUrl = getDailyUnsplashWallpaper();
+    applyBackground(dailyUrl);
+    dom.clearBgBtn.style.display = 'none';
+    return;
+  }
+  if (!settings.hasBackground) {
+    clearBackgroundUI();
+    return;
+  }
   try {
     const backgroundImage = await readBackgroundImage();
     if (backgroundImage) applyBackground(backgroundImage);
@@ -2193,18 +2285,22 @@ async function clearBackground() {
     await deleteBackgroundImage();
     settings.hasBackground = false;
     saveSettings();
-    dom.customBg.style.backgroundImage = '';
-    dom.customBg.style.opacity = '0';
-    document.body.classList.remove('has-bg');
-    dom.clearBgBtn.style.display = 'none';
+    clearBackgroundUI();
   } catch (err) { console.error('Error clearing background', err); }
+}
+
+function clearBackgroundUI() {
+  dom.customBg.style.backgroundImage = '';
+  dom.customBg.style.opacity = '0';
+  document.body.classList.remove('has-bg');
+  dom.clearBgBtn.style.display = 'none';
 }
 
 function applyBackground(dataUrl) {
   dom.customBg.style.backgroundImage = `url(${dataUrl})`;
   dom.customBg.style.opacity = '1';
   document.body.classList.add('has-bg');
-  dom.clearBgBtn.style.display = 'inline-block';
+  dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : 'inline-block';
 }
 
 function closeWidgetPanels(except = '') {

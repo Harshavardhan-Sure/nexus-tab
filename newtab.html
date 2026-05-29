@@ -58,17 +58,22 @@
       <div class="settings-section" data-settings-panel="appearance">
         <h3 class="settings-section-title">Appearance</h3>
         <label class="toggle-row"><input type="checkbox" id="toggleLightMode"><span>Light Mode</span></label>
+        <div class="settings-row" style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
+          <label for="customNameInput" style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem;">Your Name</label>
+          <input type="text" id="customNameInput" placeholder="Enter your name" class="modal-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+        </div>
         <h3 class="settings-section-title settings-subtitle">Density</h3>
         <div class="segmented-control" id="densityControl" aria-label="Layout density">
           <button type="button" data-density="compact">Compact</button>
           <button type="button" data-density="balanced">Balanced</button>
           <button type="button" data-density="spacious">Spacious</button>
         </div>
-        <div class="settings-actions" style="margin-top:0.75rem; margin-bottom: 1.25rem;">
+        <div class="settings-actions" style="margin-top:0.75rem; margin-bottom: 0.75rem;">
           <button class="btn-secondary" id="uploadBgBtn">Set Background Image</button>
           <button class="btn-danger" id="clearBgBtn" style="display:none;">Clear Background</button>
           <input type="file" id="bgInput" accept="image/*" style="display:none">
         </div>
+        <label class="toggle-row" style="margin-bottom: 1rem;"><input type="checkbox" id="toggleUnsplash"><span>Daily Unsplash Background</span></label>
         <div class="range-row">
           <label for="bgDimInput">Background Dim</label>
           <input type="range" id="bgDimInput" min="20" max="92" step="1">
@@ -101,6 +106,7 @@
       <!-- Preferences -->
       <div class="settings-section" data-settings-panel="appearance">
         <h3 class="settings-section-title">Display</h3>
+        <label class="toggle-row"><input type="checkbox" id="toggleClock" checked><span>Digital Clock</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleGreeting" checked><span>Greeting</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleQuickLinks" checked><span>Quick Links</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleRecentSearches" checked><span>Recent Searches</span></label>
@@ -148,6 +154,12 @@
   <!-- Main Content -->
   <main class="container">
     <div class="search-section">
+
+      <!-- Digital Clock -->
+      <div class="clock-section" id="clockSection">
+        <h1 class="clock-time" id="clockTime">00:00</h1>
+        <p class="clock-date" id="clockDate"></p>
+      </div>
 
       <!-- Greeting -->
       <div class="greeting-section" id="greetingSection">

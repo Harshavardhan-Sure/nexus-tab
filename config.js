@@ -128,6 +128,9 @@ const DEFAULT_QUICK_LINKS = [
 const DEFAULT_SETTINGS = {
   accentColor: 'emerald',
   accentHex: '#3ecf8e',
+  showClock: true,
+  customName: 'Harsha',
+  useUnsplash: false,
   showGreeting: true,
   showQuickLinks: true,
   showRecentSearches: true,
