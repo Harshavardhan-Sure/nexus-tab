@@ -135,6 +135,23 @@ function cacheDom() {
     helpOverlay:    $('helpOverlay'),
     helpClose:      $('helpClose'),
     helpStartBtn:   $('helpStartBtn'),
+    weatherWidget:              $('weatherWidget'),
+    weatherSummary:             $('weatherSummary'),
+    weatherIcon:                $('weatherIcon'),
+    weatherTemp:                $('weatherTemp'),
+    weatherCity:                $('weatherCity'),
+    weatherFeels:               $('weatherFeels'),
+    weatherHumidity:            $('weatherHumidity'),
+    weatherWind:                $('weatherWind'),
+    weatherForecast:            $('weatherForecast'),
+    toggleWeather:              $('toggleWeather'),
+    weatherLocationInput:       $('weatherLocationInput'),
+    weatherLocationSearchBtn:   $('weatherLocationSearchBtn'),
+    weatherLocationStatus:      $('weatherLocationStatus'),
+    weatherUnitControl:         $('weatherUnitControl'),
+    customNameInput:            $('customNameInput'),
+    bgAttribution:              $('bgAttribution'),
+    attributionLink:            $('attributionLink'),
   };
 }
 
@@ -160,6 +177,7 @@ function init() {
   renderQuickLinks();
   renderTodos();
   applyVisibilitySettings();
+  initWeather();
   bindEvents();
   dom.searchInput.focus();
 
@@ -392,7 +410,7 @@ function getGreeting() {
     greetings.push(`Good morning, ${name}!`);
   } else if (hour >= 12 && hour < 18) {
     greetings.push(`Good afternoon, ${name}!`);
-  } else if (hour >= 18 && hour < 20) {
+  } else if (hour >= 18 && hour < 23) {
     greetings.push(`Good evening, ${name}!`, `Evening, ${name}!`);
   } else if (hour >= 23) {
     greetings.push('Hello, night owl!');
@@ -467,6 +485,7 @@ function renderQuote() {
 // ══════════════════════════════════════════════════════════════════════
 const TOGGLE_MAP = {
   toggleClock:           'showClock',
+  toggleWeather:          'showWeather',
   toggleGreeting:        'showGreeting',
   toggleQuickLinks:     'showQuickLinks',
   toggleRecentSearches: 'showRecentSearches',
@@ -482,6 +501,9 @@ const TOGGLE_MAP = {
 function applyVisibilitySettings() {
   if (dom.clockSection) {
     dom.clockSection.style.display = settings.showClock ? '' : 'none';
+  }
+  if (dom.weatherWidget) {
+    dom.weatherWidget.style.display = settings.showWeather ? 'flex' : 'none';
   }
   dom.greetingSection.style.display = settings.showGreeting ? '' : 'none';
   dom.quickLinks.style.display   = settings.showQuickLinks ? '' : 'none';
@@ -793,7 +815,7 @@ function searchBookmarks(query) {
       chrome.bookmarks.search(query, results => {
         const filtered = (results || [])
           .filter(b => b.url) // Only actual bookmarks, not folders
-          .slice(0, 4);       // Cap at 4 results
+          .slice(0, 3);       // Smart limit cap at 3
         resolve(filtered);
       });
     } catch { resolve([]); }
@@ -805,8 +827,9 @@ function searchHistory(query) {
     if (!settings.showHistoryResults) { resolve([]); return; }
     try {
       if (!chrome?.history?.search) { resolve([]); return; }
-      chrome.history.search({ text: query, maxResults: 4, startTime: 0 }, results => {
-        resolve((results || []).filter(item => item.url).slice(0, 4));
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000; // Smart limit last 7 days
+      chrome.history.search({ text: query, maxResults: 3, startTime: sevenDaysAgo }, results => {
+        resolve((results || []).filter(item => item.url).slice(0, 3));
       });
     } catch { resolve([]); }
   });
@@ -821,7 +844,7 @@ function searchTopSites(query) {
       chrome.topSites.get(results => {
         const filtered = (results || [])
           .filter(item => item.url && `${item.title} ${item.url}`.toLowerCase().includes(needle))
-          .slice(0, 4);
+          .slice(0, 3); // Cap at 3 for blended symmetry
         resolve(filtered);
       });
     } catch { resolve([]); }
@@ -835,17 +858,36 @@ async function fetchGoogleSuggestions(query) {
     );
     if (!resp.ok) return [];
     const data = await resp.json();
-    return Array.isArray(data[1]) ? data[1].slice(0, 6) : [];
+    return Array.isArray(data[1]) ? data[1].slice(0, 5) : []; // Cap at 5 suggestions
   } catch { return []; }
 }
 
-function createUrlDropdownItem(entry, type, iconText) {
+function createUrlDropdownItem(entry, type, badgeText, badgeClass) {
   const item = el('div', `dropdown-item ${type}-item`);
 
+  // Favicon Wrapper
+  const favWrapper = el('span', 'dropdown-favicon');
+  const favImg = document.createElement('img');
+  favImg.alt = '';
+  favImg.loading = 'lazy';
+  try {
+    favImg.src = FAVICON_BASE + new URL(entry.url).hostname;
+  } catch {
+    favImg.src = '';
+  }
+  favWrapper.appendChild(favImg);
+
+  // Soft Badge
+  const badgeSpan = el('span', `dropdown-badge ${badgeClass}`, badgeText);
+
+  // Label
+  const labelSpan = el('span', 'dropdown-label', entry.title || entry.url);
+
+  // Hostname URL
   const urlSpan = el('span', 'dropdown-url');
   try { urlSpan.textContent = new URL(entry.url).hostname; } catch { urlSpan.textContent = ''; }
 
-  item.append(el('span', 'dropdown-prefix', iconText), el('span', 'dropdown-label', entry.title || entry.url), urlSpan);
+  item.append(favWrapper, badgeSpan, labelSpan, urlSpan);
   item.addEventListener('click', () => {
     hideDropdown();
     window.location.href = entry.url;
@@ -855,39 +897,49 @@ function createUrlDropdownItem(entry, type, iconText) {
   return item;
 }
 
-function appendDropdownSection(fragment, label, items, createItem) {
-  if (items.length === 0) return;
-  fragment.appendChild(el('div', 'dropdown-section-label', label));
-  items.forEach(item => fragment.appendChild(createItem(item)));
-}
-
 function showCombinedDropdown({ bookmarks = [], historyItems = [], topSites = [], suggestions = [] }) {
   dropdownItems = [];
   dropdownIndex = -1;
   dom.dropdown.innerHTML = '';
   const frag = document.createDocumentFragment();
 
-  appendDropdownSection(frag, 'Top Sites', topSites, item => createUrlDropdownItem(item, 'top-site', '◆'));
-  appendDropdownSection(frag, 'Bookmarks', bookmarks, item => createUrlDropdownItem(item, 'bookmark', '★'));
-  appendDropdownSection(frag, 'History', historyItems, item => createUrlDropdownItem(item, 'history', '↺'));
+  // Blended & Prioritized List: Bookmarks -> Top Sites -> History -> Google suggestions
+  bookmarks.forEach(item => {
+    frag.appendChild(createUrlDropdownItem(item, 'bookmark', 'Bookmark', 'badge-bookmark'));
+  });
 
-  if (suggestions.length > 0) {
-    frag.appendChild(el('div', 'dropdown-section-label', 'Suggestions'));
+  topSites.forEach(item => {
+    frag.appendChild(createUrlDropdownItem(item, 'top-site', 'Top Site', 'badge-topsite'));
+  });
 
-    suggestions.forEach(text => {
-      const item = el('div', 'dropdown-item suggestion-item');
-      item.append(el('span', 'dropdown-prefix', '🔍'), el('span', 'dropdown-label', text));
+  historyItems.forEach(item => {
+    frag.appendChild(createUrlDropdownItem(item, 'history', 'History', 'badge-history'));
+  });
 
-      item.addEventListener('click', () => {
-        dom.searchInput.value = text;
-        hideDropdown();
-        executeSearch();
-      });
+  suggestions.forEach(text => {
+    const item = el('div', 'dropdown-item suggestion-item');
+    
+    // Suggestion Search Icon
+    const favWrapper = el('span', 'dropdown-favicon');
+    favWrapper.textContent = '🔍';
+    favWrapper.style.fontSize = '0.7rem';
+    
+    // Suggestion Badge
+    const badgeSpan = el('span', 'dropdown-badge badge-suggest', 'Search');
+    
+    // Suggestion Text
+    const labelSpan = el('span', 'dropdown-label', text);
 
-      dropdownItems.push({ type: 'suggestion', text });
-      frag.appendChild(item);
+    item.append(favWrapper, badgeSpan, labelSpan);
+    item.addEventListener('click', () => {
+      dom.searchInput.value = text;
+      hideDropdown();
+      executeSearch();
     });
-  }
+
+    dropdownItems.push({ type: 'suggestion', text });
+    frag.appendChild(item);
+  });
 
   dom.dropdown.appendChild(frag);
   dom.dropdown.classList.add('dropdown-visible');
@@ -925,13 +977,99 @@ function parseInput(rawValue) {
   return { type: 'plain', query: value };
 }
 
+function safeEval(str) {
+  let pos = 0;
+  const chars = str.replace(/\s+/g, '');
+  
+  function peek() {
+    return pos < chars.length ? chars[pos] : null;
+  }
+  
+  function consume(char) {
+    if (peek() === char) {
+      pos++;
+      return true;
+    }
+    return false;
+  }
+  
+  function parseExpression() {
+    let result = parseTerm();
+    while (true) {
+      if (consume('+')) {
+        result += parseTerm();
+      } else if (consume('-')) {
+        result -= parseTerm();
+      } else {
+        break;
+      }
+    }
+    return result;
+  }
+  
+  function parseTerm() {
+    let result = parseFactor();
+    while (true) {
+      if (consume('*')) {
+        result *= parseFactor();
+      } else if (consume('/')) {
+        const divisor = parseFactor();
+        if (divisor === 0) throw new Error("Division by zero");
+        result /= divisor;
+      } else {
+        break;
+      }
+    }
+    return result;
+  }
+  
+  function parseFactor() {
+    if (consume('(')) {
+      const result = parseExpression();
+      if (!consume(')')) {
+        throw new Error("Missing closing parenthesis");
+      }
+      return result;
+    }
+    
+    let sign = 1;
+    if (consume('-')) {
+      sign = -1;
+    } else if (consume('+')) {
+      sign = 1;
+    }
+    
+    let start = pos;
+    while (pos < chars.length && /[\d\.]/.test(chars[pos])) {
+      pos++;
+    }
+    
+    if (start === pos) {
+      throw new Error("Expected a number");
+    }
+    
+    const numStr = chars.substring(start, pos);
+    const value = parseFloat(numStr);
+    if (isNaN(value)) {
+      throw new Error("Invalid number");
+    }
+    return sign * value;
+  }
+  
+  const val = parseExpression();
+  if (pos < chars.length) {
+    throw new Error("Unexpected trailing characters");
+  }
+  return val;
+}
+
 function handleInputChange() {
   const value = dom.searchInput.value;
   
-  // V3: Inline Calculator
+  // V3: Inline Calculator (CSP Safe using safeEval)
   if (/^[\d\s\+\-\*\/\(\)\.]+$/.test(value) && /[+\-*/]/.test(value)) {
     try {
-      const result = new Function('return ' + value)();
+      const result = safeEval(value);
       if (!isNaN(result) && result !== Infinity && value.trim() !== result.toString()) {
         showHint(`= ${result}`, 'success');
         hideDropdown();
@@ -1133,9 +1271,7 @@ function executeSearch(multiSearch = false) {
       return;
 
     case 'prefix-only':
-      trackUsage(parsed.engine.id);
-      addRecentSearch(value, parsed.engine.id);
-      window.location.href = parsed.engine.url;
+      flashHint(`Type a query after "${parsed.prefix}" to search`, 'info', 3000);
       return;
 
     case 'prefixed-query': {
@@ -1213,15 +1349,26 @@ function getActivePosition() {
 }
 
 function navigateHorizontal(direction) {
-  const pos = getActivePosition();
-  const engines = ENGINE_CATEGORIES[pos.catIndex].engines;
-  const next = direction === 'right'
-    ? (pos.engineIndex + 1) % engines.length
-    : (pos.engineIndex - 1 + engines.length) % engines.length;
-  selectEngine(engines[next].id);
+  if (!engineCatalogOpen) {
+    const compactEngines = getCompactEngines();
+    const index = compactEngines.findIndex(e => e.id === activeEngineId);
+    if (index === -1) return;
+    const next = direction === 'right'
+      ? (index + 1) % compactEngines.length
+      : (index - 1 + compactEngines.length) % compactEngines.length;
+    selectEngine(compactEngines[next].id);
+  } else {
+    const pos = getActivePosition();
+    const engines = ENGINE_CATEGORIES[pos.catIndex].engines;
+    const next = direction === 'right'
+      ? (pos.engineIndex + 1) % engines.length
+      : (pos.engineIndex - 1 + engines.length) % engines.length;
+    selectEngine(engines[next].id);
+  }
 }
 
 function navigateVertical(direction) {
+  if (!engineCatalogOpen) return; // Do nothing if catalog is closed
   const pos = getActivePosition();
   const nextCat = direction === 'down'
     ? (pos.catIndex + 1) % ENGINE_CATEGORIES.length
@@ -2056,11 +2203,44 @@ function bindEvents() {
   dom.engineModal.addEventListener('click', (e) => {
     if (e.target === dom.engineModal) dom.engineModal.style.display = 'none';
   });
+
+  // Weather Settings Bindings
+  if (dom.weatherLocationSearchBtn) {
+    dom.weatherLocationSearchBtn.addEventListener('click', searchWeatherLocation);
+  }
+  if (dom.weatherLocationInput) {
+    dom.weatherLocationInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchWeatherLocation();
+      }
+    });
+  }
+  if (dom.weatherUnitControl) {
+    dom.weatherUnitControl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-unit]');
+      if (!btn) return;
+      settings.weatherUnit = btn.dataset.unit;
+      saveSettings();
+      
+      // Update visual active classes
+      dom.weatherUnitControl.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.unit === settings.weatherUnit);
+      });
+      
+      // Re-render widget using cache
+      renderWeatherFromCache();
+    });
+  }
 }
 
 // ── Consolidated click handler ───────────────────────────────────────
+function isOverlayOpen(element) {
+  return element && window.getComputedStyle(element).display !== 'none';
+}
+
 function handleDocumentClick(e) {
-  if (dom.commandOverlay.style.display !== 'none' || dom.helpOverlay.style.display !== 'none') return;
+  if (isOverlayOpen(dom.commandOverlay) || isOverlayOpen(dom.helpOverlay)) return;
 
   // Close dropdown + recent searches when clicking outside search area
   if (!dom.searchWrapper.contains(e.target) && !dom.recentSearches.contains(e.target)) {
@@ -2123,8 +2303,8 @@ function handleGlobalKeydown(e) {
   }
 
   if (e.key === 'Escape') {
-    if (dom.commandOverlay.style.display !== 'none') { closeCommandPalette(); return; }
-    if (dom.helpOverlay.style.display !== 'none') { closeHelp(); return; }
+    if (isOverlayOpen(dom.commandOverlay)) { closeCommandPalette(); return; }
+    if (isOverlayOpen(dom.helpOverlay)) { closeHelp(); return; }
   }
 
   const isInputElement = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
@@ -2172,11 +2352,16 @@ async function runBackgroundStore(mode, action) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(BACKGROUND_DB.store, mode);
     const store = tx.objectStore(BACKGROUND_DB.store);
+    let result;
     const request = action(store);
+
+    request.onsuccess = () => {
+      result = request.result;
+    };
 
     tx.oncomplete = () => {
       db.close();
-      resolve(request?.result);
+      resolve(result);
     };
     tx.onerror = () => {
       db.close();
@@ -2238,29 +2423,29 @@ function updateClock() {
   }
 }
 
-// Curated list of premium Unsplash photo IDs for account-free daily rotation
+// Curated list of premium Unsplash photo IDs for account-free daily rotation with attribution details
 const UNSPLASH_WALLPAPERS = [
-  'photo-1470071459604-3b5ec3a7fe05', // Nature green hills
-  'photo-1507525428034-b723cf961d3e', // Sunset beach
-  'photo-1441974231531-c6227db76b6e', // Forest sun rays
-  'photo-1447752875215-b2761acb3c5d', // Woodland path
-  'photo-1472214222541-d510753a8707', // Valley field
-  'photo-1469474968028-56623f02e42e', // Mountain hiker landscape
-  'photo-1501854140801-50d01698950b', // Aerial lush hills
-  'photo-1465146344425-f00d5f5c8f07', // Flower field sunset
-  'photo-1513836279014-a89f7a76ae86', // High angle forest mist
-  'photo-1475924156734-496f6cac6ec1', // Sunrise beach wave
-  'photo-1433832597046-4f10e10ac764', // Hot air balloons Cappadocia
-  'photo-1506744038136-46273834b3fb', // Yosemite Valley
-  'photo-1443636955827-230f8823b6cf', // Minimalist sand dune
-  'photo-1518173946687-a4c8a383392e', // Macro raindrops leaf
-  'photo-1470770841072-f978cf4d019e', // Scenic lake dock
+  { id: 'photo-1470071459604-3b5ec3a7fe05', name: 'Sergei Akulich', username: 'sergeiakulich' },
+  { id: 'photo-1507525428034-b723cf961d3e', name: 'Sean Oulashin', username: 'oulashin' },
+  { id: 'photo-1441974231531-c6227db76b6e', name: 'John Towner', username: 'johntowner' },
+  { id: 'photo-1447752875215-b2761acb3c5d', name: 'Lukasz Szmigiel', username: 'szmigieldesign' },
+  { id: 'photo-1472214222541-d510753a8707', name: 'Elena Kovalenko', username: 'kovalenkoelena' },
+  { id: 'photo-1469474968028-56623f02e42e', name: 'Kalen Emsley', username: 'kalenemsley' },
+  { id: 'photo-1501854140801-50d01698950b', name: 'Houvine', username: 'houvine' },
+  { id: 'photo-1465146344425-f00d5f5c8f07', name: 'Aaron Burden', username: 'aaronburden' },
+  { id: 'photo-1513836279014-a89f7a76ae86', name: 'Johannes Plenio', username: 'jplenio' },
+  { id: 'photo-1475924156734-496f6cac6ec1', name: 'Quynh Anh Nguyen', username: 'quynhanhnguyen' },
+  { id: 'photo-1433832597046-4f10e10ac764', name: 'Sefa Yamak', username: 'sefayamak' },
+  { id: 'photo-1506744038136-46273834b3fb', name: 'Anneliese Phillips', username: 'anneliesephillips' },
+  { id: 'photo-1443636955827-230f8823b6cf', name: 'Samuel Scrimshaw', username: 'samuelscrimshaw' },
+  { id: 'photo-1518173946687-a4c8a383392e', name: 'Aaron Burden', username: 'aaronburden' },
+  { id: 'photo-1470770841072-f978cf4d019e', name: 'Luca Bravo', username: 'lucabravo' }
 ];
 
 function getDailyUnsplashWallpaper() {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-  const photoId = UNSPLASH_WALLPAPERS[dayOfYear % UNSPLASH_WALLPAPERS.length];
-  return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1920&q=80`;
+  const photo = UNSPLASH_WALLPAPERS[dayOfYear % UNSPLASH_WALLPAPERS.length];
+  return `https://images.unsplash.com/${photo.id}?auto=format&fit=crop&w=1920&q=80`;
 }
 
 async function loadBackground() {
@@ -2294,13 +2479,31 @@ function clearBackgroundUI() {
   dom.customBg.style.opacity = '0';
   document.body.classList.remove('has-bg');
   dom.clearBgBtn.style.display = 'none';
+  if (dom.bgAttribution) {
+    dom.bgAttribution.style.display = 'none';
+  }
 }
 
 function applyBackground(dataUrl) {
-  dom.customBg.style.backgroundImage = `url(${dataUrl})`;
+  dom.customBg.style.backgroundImage = `url("${dataUrl.replace(/"/g, '\\"')}")`;
   dom.customBg.style.opacity = '1';
   document.body.classList.add('has-bg');
   dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : 'inline-block';
+
+  // Attribution
+  if (settings.useUnsplash && dom.bgAttribution && dom.attributionLink) {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+    const photo = UNSPLASH_WALLPAPERS[dayOfYear % UNSPLASH_WALLPAPERS.length];
+    if (photo) {
+      dom.attributionLink.textContent = photo.name;
+      dom.attributionLink.href = `https://unsplash.com/@${photo.username}?utm_source=nexus_tab&utm_medium=referral`;
+      dom.bgAttribution.style.display = 'block';
+    }
+  } else {
+    if (dom.bgAttribution) {
+      dom.bgAttribution.style.display = 'none';
+    }
+  }
 }
 
 function closeWidgetPanels(except = '') {
@@ -2354,6 +2557,218 @@ function toggleTodoWidget() {
   dom.todoPanel.classList.toggle('visible', isVisible);
   dom.todoToggle.classList.toggle('active', isVisible);
   if (isVisible) dom.todoInput.focus();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  🌤️ LIVE WEATHER WIDGET FEATURES
+// ══════════════════════════════════════════════════════════════════════
+function initWeather() {
+  if (!dom.weatherWidget) return;
+  
+  if (dom.weatherLocationInput) {
+    dom.weatherLocationInput.value = settings.weatherLocation?.name || '';
+  }
+  
+  if (dom.weatherUnitControl) {
+    dom.weatherUnitControl.querySelectorAll('button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.unit === settings.weatherUnit);
+    });
+  }
+  
+  updateWeatherWidget();
+}
+
+function updateWeatherWidget() {
+  if (!settings.showWeather) {
+    if (dom.weatherWidget) dom.weatherWidget.style.display = 'none';
+    return;
+  }
+  if (dom.weatherWidget) dom.weatherWidget.style.display = 'flex';
+  
+  // Read cache
+  const cache = safeGetJSON(STORAGE_KEYS.weatherCache, null);
+  const cacheDuration = 30 * 60 * 1000; // 30 minutes
+  
+  const hasValidCache = cache 
+    && cache.timestamp 
+    && cache.city === settings.weatherLocation?.name
+    && (Date.now() - cache.timestamp < cacheDuration);
+    
+  if (hasValidCache) {
+    renderWeather(cache.data, cache.city);
+  } else {
+    const loc = settings.weatherLocation || DEFAULT_SETTINGS.weatherLocation;
+    fetchWeather(loc.latitude, loc.longitude, loc.name);
+  }
+}
+
+async function fetchWeather(latitude, longitude, name) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Weather API fetch failed');
+    const data = await resp.json();
+    
+    // Parse weather data
+    const current = data.current;
+    const daily = data.daily;
+    
+    const weatherData = {
+      current: {
+        temp: current.temperature_2m,
+        feelsLike: current.apparent_temperature,
+        humidity: current.relative_humidity_2m,
+        wind: current.wind_speed_10m,
+        code: current.weather_code
+      },
+      forecast: []
+    };
+    
+    // 3-Day Forecast
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 0; i < 3; i++) {
+      const date = new Date(daily.time[i]);
+      const dayName = i === 0 ? 'Today' : days[date.getDay()];
+      weatherData.forecast.push({
+        day: dayName,
+        code: daily.weather_code[i],
+        max: daily.temperature_2m_max[i],
+        min: daily.temperature_2m_min[i]
+      });
+    }
+    
+    // Cache data
+    const cache = {
+      timestamp: Date.now(),
+      city: name,
+      data: weatherData
+    };
+    safeSetJSON(STORAGE_KEYS.weatherCache, cache);
+    
+    renderWeather(weatherData, name);
+  } catch (err) {
+    console.error('Failed to load weather', err);
+    // If request fails, fallback to rendering last cache if it exists
+    const cache = safeGetJSON(STORAGE_KEYS.weatherCache, null);
+    if (cache) {
+      renderWeather(cache.data, cache.city);
+    }
+  }
+}
+
+function convertTemp(celsius, unit) {
+  if (unit === 'fahrenheit') {
+    return (celsius * 1.8) + 32;
+  }
+  return celsius;
+}
+
+function getWeatherIcon(code) {
+  if (code === 0) return '☀️'; // Clear sky
+  if (code >= 1 && code <= 3) return '🌤️'; // Mainly clear, partly cloudy, and overcast
+  if (code === 45 || code === 48) return '🌫️'; // Fog and depositing rime fog
+  if (code >= 51 && code <= 55) return '🌧️'; // Drizzle: Light, moderate, and dense intensity
+  if (code >= 61 && code <= 65) return '🌧️'; // Rain: Slight, moderate and heavy intensity
+  if (code >= 71 && code <= 75) return '❄️'; // Snow fall: Slight, moderate, and heavy intensity
+  if (code >= 80 && code <= 82) return '🌦️'; // Rain showers: Slight, moderate, and violent
+  if (code >= 95 && code <= 99) return '⛈️'; // Thunderstorm: Slight or moderate
+  return '☁️';
+}
+
+function renderWeather(weatherData, cityName) {
+  if (!weatherData || !dom.weatherWidget) return;
+  
+  const unit = settings.weatherUnit || 'celsius';
+  
+  // Current stats conversion
+  const temp = convertTemp(weatherData.current.temp, unit);
+  const feelsLike = convertTemp(weatherData.current.feelsLike, unit);
+  const windUnit = 'km/h';
+  
+  dom.weatherIcon.textContent = getWeatherIcon(weatherData.current.code);
+  dom.weatherTemp.textContent = `${Math.round(temp)}°`;
+  dom.weatherCity.textContent = cityName;
+  dom.weatherFeels.textContent = `${Math.round(feelsLike)}°`;
+  dom.weatherHumidity.textContent = `${weatherData.current.humidity}%`;
+  dom.weatherWind.textContent = `${Math.round(weatherData.current.wind)} ${windUnit}`;
+  
+  // Render forecast
+  dom.weatherForecast.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  
+  weatherData.forecast.forEach(item => {
+    const row = el('div', 'weather-forecast-item');
+    
+    const daySpan = el('span', 'forecast-day', item.day);
+    const iconSpan = el('span', 'forecast-icon', getWeatherIcon(item.code));
+    
+    const max = Math.round(convertTemp(item.max, unit));
+    const min = Math.round(convertTemp(item.min, unit));
+    
+    const tempSpan = el('span', 'forecast-temp');
+    tempSpan.innerHTML = `${max}°<span class="forecast-low">${min}°</span>`;
+    
+    row.append(daySpan, iconSpan, tempSpan);
+    frag.appendChild(row);
+  });
+  
+  dom.weatherForecast.appendChild(frag);
+}
+
+function renderWeatherFromCache() {
+  const cache = safeGetJSON(STORAGE_KEYS.weatherCache, null);
+  if (cache) {
+    renderWeather(cache.data, cache.city);
+  }
+}
+
+async function searchWeatherLocation() {
+  if (!dom.weatherLocationInput || !dom.weatherLocationStatus) return;
+  
+  const query = dom.weatherLocationInput.value.trim();
+  if (!query) {
+    dom.weatherLocationStatus.textContent = 'Please enter a city name.';
+    dom.weatherLocationStatus.style.color = '#ef4444';
+    return;
+  }
+  
+  dom.weatherLocationStatus.textContent = 'Searching...';
+  dom.weatherLocationStatus.style.color = 'var(--text-secondary)';
+  
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Geocoding search failed');
+    const data = await resp.json();
+    
+    if (data.results && data.results.length > 0) {
+      const result = data.results[0];
+      const name = result.name + (result.admin1 ? `, ${result.admin1}` : '') + (result.country_code ? ` [${result.country_code.toUpperCase()}]` : '');
+      
+      settings.weatherLocation = {
+        name: result.name,
+        latitude: result.latitude,
+        longitude: result.longitude
+      };
+      saveSettings();
+      
+      // Sync input value
+      dom.weatherLocationInput.value = result.name;
+      dom.weatherLocationStatus.textContent = `Location set to: ${name}`;
+      dom.weatherLocationStatus.style.color = 'var(--accent)';
+      
+      // Clear cache and refetch
+      removeStoredValue(STORAGE_KEYS.weatherCache);
+      updateWeatherWidget();
+    } else {
+      dom.weatherLocationStatus.textContent = 'Location not found. Try another city.';
+      dom.weatherLocationStatus.style.color = '#ef4444';
+    }
+  } catch (err) {
+    console.error('Geocoding search error', err);
+    dom.weatherLocationStatus.textContent = 'Network error. Try again.';
+    dom.weatherLocationStatus.style.color = '#ef4444';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════

@@ -465,6 +465,23 @@ body {
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--search-border-strong) transparent;
+}
+
+/* Custom Webkit Scrollbars for Autocomplete Dropdown */
+.autocomplete-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+.autocomplete-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background-color: var(--search-border-strong);
+  border-radius: 10px;
+}
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-default);
 }
 
 .autocomplete-dropdown.dropdown-visible {
@@ -2236,3 +2253,322 @@ body.theme-light .widget-dock {
   right: 0;
   transform-origin: bottom right;
 }
+
+/* ================================================================
+   🌤️ PREMIUM WEATHER WIDGET (MATCHING HELP/SETTINGS CONTROLS)
+   ================================================================ */
+.weather-widget {
+  position: fixed;
+  top: 16px;
+  right: 104px; /* Placed exactly to the left of the Help button (16px right margin + 36px Settings + 8px gap + 36px Help + 8px gap = 104px) */
+  z-index: 20; /* Same z-index layer as Settings and Help buttons */
+  display: flex;
+  flex-direction: column;
+  min-height: 36px;
+  max-height: 36px;
+  padding: 0 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); /* Matches the 10px rounded border radius of controls */
+  color: var(--text-secondary);
+  font-family: var(--font);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: none;
+  /* Mouse-Out Transition: quick collapse */
+  transition: 
+    background-color var(--transition-fast), 
+    border-color var(--transition-fast),
+    max-height 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius var(--transition-fast),
+    box-shadow 250ms ease,
+    color var(--transition-fast);
+  user-select: none;
+}
+
+.weather-widget:hover {
+  max-height: 280px; /* Expands smoothly downwards to display detailed 3-day forecast */
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  border-radius: var(--radius-md); /* Smoothly becomes slightly more rounded when expanded */
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+  /* Mouse-In Transition: smooth reveal */
+  transition: 
+    background-color var(--transition-fast), 
+    border-color var(--transition-fast),
+    max-height 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius var(--transition-fast),
+    box-shadow 350ms ease,
+    color var(--transition-fast);
+}
+
+.weather-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 34px; /* Centers weather items vertically perfectly inside the 36px box */
+  flex-shrink: 0;
+}
+
+.weather-icon {
+  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-normal);
+}
+
+.weather-widget:hover .weather-icon {
+  transform: scale(1.1);
+}
+
+.weather-temp {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.weather-widget:hover .weather-temp {
+  color: var(--accent); /* Illuminates to primary accent on hover */
+}
+
+.weather-city {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+  transition: color var(--transition-fast);
+}
+
+.weather-widget:hover .weather-city {
+  color: var(--text-secondary);
+}
+
+/* Hover Expanded Details Card */
+.weather-details-card {
+  opacity: 0;
+  visibility: hidden;
+  overflow: hidden;
+  /* Mouse-Out Transition: fade out extremely fast before height shrinks */
+  transition: 
+    opacity 120ms ease, 
+    visibility 120ms ease;
+  flex-shrink: 0;
+}
+
+.weather-widget:hover .weather-details-card {
+  opacity: 1;
+  visibility: visible;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-bottom: 6px;
+  /* Mouse-In Transition: fade in slowly, delayed by 100ms after height expansion starts */
+  transition: 
+    opacity 250ms ease 100ms, 
+    visibility 250ms ease 100ms;
+}
+
+.weather-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.weather-meta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.weather-meta-item span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+  text-transform: none;
+}
+
+.weather-forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.weather-forecast-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.forecast-day {
+  font-weight: 500;
+  color: var(--text-secondary);
+  width: 32px;
+}
+
+.forecast-icon {
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.forecast-temp {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.forecast-low {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.65rem;
+  margin-left: 0.25rem;
+}
+
+/* ================================================================
+   🔍 ENHANCED BLENDED DROPDOWN & ACCENT BADGES
+   ================================================================ */
+.dropdown-favicon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.dropdown-favicon img {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.dropdown-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Soft colored pill variations */
+.badge-bookmark {
+  color: #3ecf8e;
+  background: rgba(62, 207, 142, 0.1);
+  border: 1px solid rgba(62, 207, 142, 0.18);
+}
+
+.badge-history {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.18);
+}
+
+.badge-engine {
+  color: #f0c674;
+  background: rgba(240, 198, 116, 0.1);
+  border: 1px solid rgba(240, 198, 116, 0.18);
+}
+
+.badge-topsite {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+}
+
+.badge-suggest {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.theme-light .badge-suggest {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Responsive adjustment for floating widget on smaller screens */
+@media (max-width: 768px) {
+  .weather-widget {
+    top: auto;
+    bottom: 4.5rem;
+    right: 1.5rem;
+    max-width: 220px;
+  }
+  .weather-widget:hover .weather-details-card {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+/* Background Attribution */
+.bg-attribution {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 10;
+  transition: opacity 0.3s ease, color 0.2s ease;
+  pointer-events: auto;
+  user-select: none;
+}
+
+body.theme-light .bg-attribution {
+  color: rgba(0, 0, 0, 0.55);
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bg-attribution a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+body.theme-light .bg-attribution a {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.bg-attribution a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+body.theme-light .bg-attribution a:hover {
+  color: #000000;
+}
+

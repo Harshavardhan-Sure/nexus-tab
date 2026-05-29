@@ -25,7 +25,7 @@ const QUOTES = [
   { text: "Before software can be reusable it first has to be usable.", author: "Ralph Johnson" },
   { text: "Experience is the name everyone gives to their mistakes.", author: "Oscar Wilde" },
   { text: "The function of good software is to make the complex appear to be simple.", author: "Grady Booch" },
-  { text: "Don't worry about what anybody else is going to do. The best way to predict the future is to invent it.", author: "Alan Kay" },
+  { text: "Simplicity is about subtracting the obvious and adding the meaningful.", author: "John Maeda" },
   { text: "Programming isn't about what you know; it's about what you can figure out.", author: "Chris Pine" },
   { text: "Delete more code than you write.", author: "Unknown" },
   { text: "The art of debugging is figuring out what you really told your program to do rather than what you thought you told it to do.", author: "Andrew Singer" },

@@ -110,6 +110,7 @@ const STORAGE_KEYS = {
   usage: 'nexus-usage',
   customEngines: 'nexus-custom-engines',
   todos: 'nexus-todos',
+  weatherCache: 'nexus-weather-cache',
 };
 
 const LEGACY_ENGINE_KEY = 'nexus-tab-engine';
@@ -147,6 +148,9 @@ const DEFAULT_SETTINGS = {
   backgroundPosition: 'center',
   layoutDensity: 'balanced',
   hasSeenOnboarding: false,
+  showWeather: true,
+  weatherUnit: 'celsius',
+  weatherLocation: { name: 'New York', latitude: 40.7128, longitude: -74.006 },
 };
 
 const ACCENT_COLORS = {

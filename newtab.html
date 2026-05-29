@@ -15,10 +15,32 @@
   <div class="custom-bg" id="customBg"></div>
   <div class="vignette"></div>
 
+  <!-- Background Attribution -->
+  <div class="bg-attribution" id="bgAttribution" style="display: none;">
+    Photo by <a id="attributionLink" href="#" target="_blank" rel="noopener"></a> on <a href="https://unsplash.com/?utm_source=nexus_tab&utm_medium=referral" target="_blank" rel="noopener">Unsplash</a>
+  </div>
+
   <!-- Incognito Badge -->
   <div class="incognito-badge" id="incognitoBadge" style="display:none;">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     Incognito
+  </div>
+
+  <!-- Weather Widget -->
+  <div class="weather-widget" id="weatherWidget" style="display: none;">
+    <div class="weather-summary" id="weatherSummary" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Weather summary">
+      <span class="weather-icon" id="weatherIcon">☀️</span>
+      <span class="weather-temp" id="weatherTemp">--°</span>
+      <span class="weather-city" id="weatherCity">--</span>
+    </div>
+    <div class="weather-details-card" id="weatherDetailsCard">
+      <div class="weather-meta">
+        <div class="weather-meta-item">Feels: <span id="weatherFeels">--</span></div>
+        <div class="weather-meta-item">Humidity: <span id="weatherHumidity">--</span></div>
+        <div class="weather-meta-item">Wind: <span id="weatherWind">--</span></div>
+      </div>
+      <div class="weather-forecast" id="weatherForecast"></div>
+    </div>
   </div>
 
   <!-- Settings Gear -->
@@ -61,6 +83,22 @@
         <div class="settings-row" style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
           <label for="customNameInput" style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem;">Your Name</label>
           <input type="text" id="customNameInput" placeholder="Enter your name" class="modal-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+        </div>
+        <h3 class="settings-section-title settings-subtitle">Weather</h3>
+        <div class="settings-row" style="margin-bottom: 0.75rem;">
+          <label for="weatherLocationInput" style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem;">City Location</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="weatherLocationInput" placeholder="Enter city name (e.g. New York)" class="modal-input" style="flex: 1; box-sizing: border-box; padding: 0.5rem 0.75rem; font-size: 0.85rem; margin-bottom: 0;">
+            <button type="button" class="btn-primary" id="weatherLocationSearchBtn" style="padding: 0.5rem 0.75rem; font-size: 0.85rem; margin-top: 0; min-height: unset; height: unset;">Set</button>
+          </div>
+          <p id="weatherLocationStatus" style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0; color: var(--text-muted); min-height: 1.2em;"></p>
+        </div>
+        <div class="settings-row" style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem;">Weather Unit</label>
+          <div class="segmented-control" id="weatherUnitControl" aria-label="Weather temperature unit">
+            <button type="button" data-unit="celsius" class="active">Celsius (°C)</button>
+            <button type="button" data-unit="fahrenheit">Fahrenheit (°F)</button>
+          </div>
         </div>
         <h3 class="settings-section-title settings-subtitle">Density</h3>
         <div class="segmented-control" id="densityControl" aria-label="Layout density">
@@ -107,6 +145,7 @@
       <div class="settings-section" data-settings-panel="appearance">
         <h3 class="settings-section-title">Display</h3>
         <label class="toggle-row"><input type="checkbox" id="toggleClock" checked><span>Digital Clock</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggleWeather" checked><span>Weather Widget</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleGreeting" checked><span>Greeting</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleQuickLinks" checked><span>Quick Links</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleRecentSearches" checked><span>Recent Searches</span></label>

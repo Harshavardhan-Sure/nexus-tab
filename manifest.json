@@ -20,7 +20,9 @@
     "topSites"
   ],
   "host_permissions": [
-    "https://suggestqueries.google.com/*"
+    "https://suggestqueries.google.com/*",
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*"
   ],
   "content_scripts": [
     {
