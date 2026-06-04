@@ -50,6 +50,7 @@ let suggestDebounceTimer = null;
 let isIncognito = false;
 let notesInitialized = false;
 let todos = [];
+let workspaces = [];
 let engineCatalogOpen = false;
 let commandIndex = -1;
 let commandItems = [];
@@ -152,6 +153,12 @@ function cacheDom() {
     customNameInput:            $('customNameInput'),
     bgAttribution:              $('bgAttribution'),
     attributionLink:            $('attributionLink'),
+    workspaceToggle:  $('workspaceToggle'),
+    workspacePanel:   $('workspacePanel'),
+    workspaceList:    $('workspaceList'),
+    workspaceSaveForm:  $('workspaceSaveForm'),
+    workspaceSaveInput: $('workspaceSaveInput'),
+    workspaceEmpty:     $('workspaceEmpty'),
   };
 }
 
@@ -241,6 +248,7 @@ function loadStoredState() {
     customEngines: safeGetArray(STORAGE_KEYS.customEngines, []),
     usageData: safeGetObject(STORAGE_KEYS.usage, {}),
     todos: safeGetArray(STORAGE_KEYS.todos, []),
+    workspaces: safeGetArray(STORAGE_KEYS.workspaces, []),
   };
 }
 
@@ -257,6 +265,7 @@ function loadAllData() {
   customEngines = storedState.customEngines;
   usageData = storedState.usageData;
   todos = storedState.todos;
+  workspaces = storedState.workspaces;
   loadCustomEngines();
   activeEngineId = loadSavedEngineId();
 }
@@ -268,6 +277,7 @@ function saveUsage()          { safeSetJSON(STORAGE_KEYS.usage, usageData); }
 function saveEngine(id)       { safeSetRaw(STORAGE_KEYS.engine, id); }
 function saveCustomEngines()  { safeSetJSON(STORAGE_KEYS.customEngines, customEngines); }
 function saveTodos()          { safeSetJSON(STORAGE_KEYS.todos, todos); }
+function saveWorkspaces()     { safeSetJSON(STORAGE_KEYS.workspaces, workspaces); }
 
 // ══════════════════════════════════════════════════════════════════════
 //  INCOGNITO DETECTION
@@ -1932,6 +1942,8 @@ function getCommandDefinitions() {
     { label: 'Open Notes', hint: 'widget', keywords: 'notes memo', action: () => { if (!dom.notesPanel.classList.contains('visible')) toggleNotes(); } },
     { label: 'Open Timer', hint: 'widget', keywords: 'pomodoro focus timer', action: () => { if (!dom.timerPanel.classList.contains('visible')) toggleTimer(); } },
     { label: 'Open Tasks', hint: 'widget', keywords: 'todo tasks checklist', action: () => { if (!dom.todoPanel.classList.contains('visible')) toggleTodoWidget(); } },
+    { label: 'Open Workspaces', hint: 'widget', keywords: 'workspace tabs session save restore', action: () => { if (!dom.workspacePanel.classList.contains('visible')) toggleWorkspaceWidget(); } },
+    { label: 'Save Current Tabs as Workspace', hint: 'workspace', keywords: 'save tabs session workspace capture', action: () => { toggleWorkspaceWidget(); setTimeout(() => dom.workspaceSaveInput?.focus(), 100); } },
     {
       label: 'Clear Recent Searches',
       hint: 'recent',
@@ -2213,6 +2225,13 @@ function bindEvents() {
       dom.todoInput.value = '';
       renderTodos();
     }
+  });
+
+  // Workspace Widget Bindings
+  dom.workspaceToggle.addEventListener('click', toggleWorkspaceWidget);
+  dom.workspaceSaveForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveCurrentTabsAsWorkspace();
   });
 
   dom.uploadBgBtn.addEventListener('click', () => dom.bgInput.click());
@@ -2555,6 +2574,11 @@ function closeWidgetPanels(except = '') {
     dom.todoPanel.classList.remove('visible');
     dom.todoToggle.classList.remove('active');
   }
+
+  if (except !== 'workspace') {
+    dom.workspacePanel.classList.remove('visible');
+    dom.workspaceToggle.classList.remove('active');
+  }
 }
 
 function renderTodos() {
@@ -2803,6 +2827,257 @@ async function searchWeatherLocation() {
     dom.weatherLocationStatus.textContent = 'Network error. Try again.';
     dom.weatherLocationStatus.style.color = '#ef4444';
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  📁 WORKSPACE / TAB SESSION MANAGER
+// ══════════════════════════════════════════════════════════════════════
+function toggleWorkspaceWidget() {
+  const isVisible = !dom.workspacePanel.classList.contains('visible');
+  closeWidgetPanels(isVisible ? 'workspace' : '');
+  dom.workspacePanel.classList.toggle('visible', isVisible);
+  dom.workspaceToggle.classList.toggle('active', isVisible);
+  if (isVisible) {
+    renderWorkspaces();
+    dom.workspaceSaveInput.focus();
+  }
+}
+
+async function captureCurrentTabs() {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      return new Promise((resolve) => {
+        chrome.tabs.query({ currentWindow: true }, (tabs) => {
+          const filtered = (tabs || [])
+            .filter(tab => tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://'))
+            .map(tab => ({
+              title: tab.title || tab.url,
+              url: tab.url,
+              favIconUrl: tab.favIconUrl || '',
+            }));
+          resolve(filtered);
+        });
+      });
+    }
+  } catch {}
+  // Fallback for non-extension environments (dev server, etc.)
+  return [
+    { title: 'Example Tab (extension API unavailable)', url: 'https://example.com', favIconUrl: '' },
+  ];
+}
+
+async function saveCurrentTabsAsWorkspace() {
+  const name = dom.workspaceSaveInput.value.trim();
+  if (!name) {
+    flashHint('Enter a workspace name', 'error', 1500);
+    return;
+  }
+
+  const tabs = await captureCurrentTabs();
+  if (tabs.length === 0) {
+    flashHint('No tabs to save', 'error', 1500);
+    return;
+  }
+
+  workspaces.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name,
+    tabs,
+    createdAt: Date.now(),
+  });
+
+  saveWorkspaces();
+  dom.workspaceSaveInput.value = '';
+  renderWorkspaces();
+  flashHint(`Workspace "${name}" saved (${tabs.length} tabs)`, 'success', 2000);
+}
+
+function restoreWorkspace(workspace) {
+  if (!workspace || !workspace.tabs || workspace.tabs.length === 0) return;
+
+  try {
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+      workspace.tabs.forEach(tab => {
+        chrome.tabs.create({ url: tab.url, active: false });
+      });
+      flashHint(`Restored "${workspace.name}" (${workspace.tabs.length} tabs)`, 'success', 2000);
+      return;
+    }
+  } catch {}
+
+  // Fallback: open in new windows/tabs
+  workspace.tabs.forEach(tab => {
+    window.open(tab.url, '_blank');
+  });
+  flashHint(`Restored "${workspace.name}" (${workspace.tabs.length} tabs)`, 'success', 2000);
+}
+
+async function updateWorkspace(index) {
+  const workspace = workspaces[index];
+  if (!workspace) return;
+
+  const tabs = await captureCurrentTabs();
+  if (tabs.length === 0) {
+    flashHint('No tabs to save', 'error', 1500);
+    return;
+  }
+
+  workspace.tabs = tabs;
+  workspace.createdAt = Date.now();
+  saveWorkspaces();
+  renderWorkspaces();
+  flashHint(`"${workspace.name}" updated (${tabs.length} tabs)`, 'success', 2000);
+}
+
+function deleteWorkspace(index) {
+  const workspace = workspaces[index];
+  if (!workspace) return;
+  workspaces.splice(index, 1);
+  saveWorkspaces();
+  renderWorkspaces();
+  flashHint(`Workspace deleted`, 'success', 1500);
+}
+
+function removeTabFromWorkspace(workspaceIndex, tabIndex) {
+  const workspace = workspaces[workspaceIndex];
+  if (!workspace || !workspace.tabs[tabIndex]) return;
+
+  workspace.tabs.splice(tabIndex, 1);
+
+  // If workspace is now empty, remove it entirely
+  if (workspace.tabs.length === 0) {
+    workspaces.splice(workspaceIndex, 1);
+    flashHint('Tab removed — workspace was empty and deleted', 'success', 1800);
+  } else {
+    flashHint('Tab removed', 'success', 1200);
+  }
+
+  saveWorkspaces();
+  renderWorkspaces();
+}
+
+function formatWorkspaceDate(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function renderWorkspaces() {
+  dom.workspaceList.innerHTML = '';
+
+  if (workspaces.length === 0) {
+    dom.workspaceEmpty.style.display = 'flex';
+    return;
+  }
+
+  dom.workspaceEmpty.style.display = 'none';
+  const frag = document.createDocumentFragment();
+
+  workspaces.forEach((workspace, index) => {
+    const item = el('div', 'workspace-item');
+    item.dataset.wsIndex = index;
+
+    // Header row
+    const header = el('div', 'workspace-item-header');
+
+    // Expand chevron
+    const expand = el('span', 'workspace-item-expand');
+    expand.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>';
+
+    // Info
+    const info = el('div', 'workspace-item-info');
+    info.appendChild(el('div', 'workspace-item-name', workspace.name));
+    info.appendChild(el('div', 'workspace-item-meta', `${workspace.tabs.length} tab${workspace.tabs.length !== 1 ? 's' : ''} · ${formatWorkspaceDate(workspace.createdAt)}`));
+
+    // Action buttons
+    const actions = el('div', 'workspace-item-actions');
+
+    const restoreBtn = el('button', 'workspace-action-btn ws-restore');
+    restoreBtn.title = 'Restore all tabs';
+    restoreBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+    restoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      restoreWorkspace(workspace);
+    });
+
+    const updateBtn = el('button', 'workspace-action-btn ws-update');
+    updateBtn.title = 'Update with current tabs';
+    updateBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+    updateBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateWorkspace(index);
+    });
+
+    const deleteBtn = el('button', 'workspace-action-btn ws-delete');
+    deleteBtn.title = 'Delete workspace';
+    deleteBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteWorkspace(index);
+    });
+
+    actions.append(restoreBtn, updateBtn, deleteBtn);
+    header.append(expand, info, actions);
+
+    // Expandable tab details
+    const tabsContainer = el('div', 'workspace-item-tabs');
+    const tabList = el('div', 'workspace-tab-list');
+
+    workspace.tabs.forEach((tab, tabIndex) => {
+      const entry = document.createElement('div');
+      entry.className = 'workspace-tab-entry';
+
+      const tabLink = document.createElement('a');
+      tabLink.href = tab.url;
+      tabLink.target = '_blank';
+      tabLink.rel = 'noopener';
+      tabLink.title = tab.url;
+      tabLink.className = 'workspace-tab-link';
+
+      const favicon = document.createElement('img');
+      favicon.className = 'workspace-tab-favicon';
+      favicon.alt = '';
+      favicon.loading = 'lazy';
+      try {
+        favicon.src = tab.favIconUrl || FAVICON_BASE + new URL(tab.url).hostname;
+      } catch {
+        favicon.src = '';
+      }
+
+      tabLink.append(favicon, el('span', 'workspace-tab-title', tab.title || tab.url));
+
+      const removeTabBtn = el('button', 'workspace-tab-remove', '×');
+      removeTabBtn.title = 'Remove this tab';
+      removeTabBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeTabFromWorkspace(index, tabIndex);
+      });
+
+      entry.append(tabLink, removeTabBtn);
+      tabList.appendChild(entry);
+    });
+
+    tabsContainer.appendChild(tabList);
+
+    // Toggle expand
+    header.addEventListener('click', () => {
+      item.classList.toggle('expanded');
+    });
+
+    item.append(header, tabsContainer);
+    frag.appendChild(item);
+  });
+
+  dom.workspaceList.appendChild(frag);
 }
 
 // ══════════════════════════════════════════════════════════════════════

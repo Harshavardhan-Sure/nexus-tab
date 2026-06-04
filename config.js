@@ -111,6 +111,7 @@ const STORAGE_KEYS = {
   customEngines: 'nexus-custom-engines',
   todos: 'nexus-todos',
   weatherCache: 'nexus-weather-cache',
+  workspaces: 'nexus-workspaces',
 };
 
 const LEGACY_ENGINE_KEY = 'nexus-tab-engine';
