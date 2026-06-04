@@ -51,6 +51,7 @@ let isIncognito = false;
 let notesInitialized = false;
 let todos = [];
 let workspaces = [];
+let expandedWorkspaces = new Set();
 let engineCatalogOpen = false;
 let commandIndex = -1;
 let commandItems = [];
@@ -2590,6 +2591,9 @@ function renderTodos() {
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.checked = task.completed;
+    cb.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
     cb.addEventListener('change', () => {
       todos[index].completed = cb.checked;
       saveTodos();
@@ -2597,7 +2601,8 @@ function renderTodos() {
     });
 
     const del = el('button', 'todo-item-remove', '×');
-    del.addEventListener('click', () => {
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
       todos.splice(index, 1);
       saveTodos();
       renderTodos();
@@ -2985,6 +2990,9 @@ function renderWorkspaces() {
   workspaces.forEach((workspace, index) => {
     const item = el('div', 'workspace-item');
     item.dataset.wsIndex = index;
+    if (expandedWorkspaces.has(workspace.createdAt)) {
+      item.classList.add('expanded');
+    }
 
     // Header row
     const header = el('div', 'workspace-item-header');
@@ -3070,7 +3078,12 @@ function renderWorkspaces() {
 
     // Toggle expand
     header.addEventListener('click', () => {
-      item.classList.toggle('expanded');
+      const isExpanded = item.classList.toggle('expanded');
+      if (isExpanded) {
+        expandedWorkspaces.add(workspace.createdAt);
+      } else {
+        expandedWorkspaces.delete(workspace.createdAt);
+      }
     });
 
     item.append(header, tabsContainer);
