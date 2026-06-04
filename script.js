@@ -1250,6 +1250,34 @@ function selectDropdownItem() {
 // ══════════════════════════════════════════════════════════════════════
 //  SEARCH EXECUTION
 // ══════════════════════════════════════════════════════════════════════
+function getBaseEngineUrl(searchUrl) {
+  try {
+    const url = new URL(searchUrl);
+    url.search = '';
+    url.hash = '';
+    
+    let path = url.pathname;
+    const searchKeywords = new Set([
+      'search', 'results', 'app', 'new', 'input', 'do', 'scholar', 
+      'Special:Search', 'pins', 'phrases', 'sch', 'i.html', 'ps', 'app'
+    ]);
+    
+    const segments = path.split('/').filter(seg => seg && !searchKeywords.has(seg));
+    url.pathname = segments.length > 0 ? '/' + segments.join('/') + '/' : '/';
+    return url.toString();
+  } catch (e) {
+    const qIndex = searchUrl.indexOf('?');
+    if (qIndex !== -1) {
+      return searchUrl.substring(0, qIndex);
+    }
+    const hIndex = searchUrl.indexOf('#');
+    if (hIndex !== -1) {
+      return searchUrl.substring(0, hIndex);
+    }
+    return searchUrl;
+  }
+}
+
 function executeSearch(multiSearch = false) {
   const value = dom.searchInput.value.trimStart();
   if (!value) return;
@@ -1271,14 +1299,20 @@ function executeSearch(multiSearch = false) {
       return;
 
     case 'prefix-only':
-      flashHint(`Type a query after "${parsed.prefix}" to search`, 'info', 3000);
+      trackUsage(parsed.engine.id);
+      window.location.href = getBaseEngineUrl(parsed.engine.url);
       return;
 
     case 'prefixed-query': {
       trackUsage(parsed.engine.id);
-      addRecentSearch(parsed.query, parsed.engine.id);
-      const url = parsed.engine.url + encodeURIComponent(parsed.query);
-      multiSearch ? openMultiSearch(parsed.query, parsed.engine.id) : (window.location.href = url);
+      const query = parsed.query.trim();
+      if (!query) {
+        window.location.href = getBaseEngineUrl(parsed.engine.url);
+        return;
+      }
+      addRecentSearch(query, parsed.engine.id);
+      const url = parsed.engine.url + encodeURIComponent(query);
+      multiSearch ? openMultiSearch(query, parsed.engine.id) : (window.location.href = url);
       return;
     }
 
