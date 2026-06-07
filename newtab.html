@@ -138,6 +138,10 @@
           <button class="color-swatch" data-color="amber" data-hex="#f0c674" style="background:#f0c674" aria-label="Amber"></button>
           <button class="color-swatch" data-color="rose" data-hex="#f472b6" style="background:#f472b6" aria-label="Rose"></button>
           <button class="color-swatch" data-color="cyan" data-hex="#22d3ee" style="background:#22d3ee" aria-label="Cyan"></button>
+          <label class="custom-color-wrapper" aria-label="Custom color">
+            <input type="color" id="customColorInput" class="custom-color-input" value="#3ecf8e">
+            <span class="custom-color-label">Custom</span>
+          </label>
         </div>
       </div>
 
@@ -145,6 +149,7 @@
       <div class="settings-section" data-settings-panel="appearance">
         <h3 class="settings-section-title">Display</h3>
         <label class="toggle-row"><input type="checkbox" id="toggleClock" checked><span>Digital Clock</span></label>
+        <label class="toggle-row"><input type="checkbox" id="toggle24hClock"><span>24-Hour Clock</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleWeather" checked><span>Weather Widget</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleGreeting" checked><span>Greeting</span></label>
         <label class="toggle-row"><input type="checkbox" id="toggleQuickLinks" checked><span>Quick Links</span></label>
@@ -245,7 +250,7 @@
     </div>
   </main>
 
-  <div class="widget-dock" id="widgetDock" aria-label="Productivity widgets">
+  <div class="widget-dock" id="widgetDock" aria-label="Productivity widgets" style="display:none;">
     <!-- Sticky Notes Widget -->
     <div class="notes-widget">
       <button class="notes-toggle dock-toggle" id="notesToggle" aria-label="Toggle notes">
@@ -284,7 +289,13 @@
         <div class="todo-header">Tasks</div>
         <div class="todo-list" id="todoList"></div>
         <form class="todo-input-group" id="todoForm">
-          <input type="text" class="todo-input" id="todoInput" placeholder="Add a task..." autocomplete="off">
+          <div class="todo-input-row">
+            <button type="button" class="todo-priority-btn" id="todoPriorityBtn" data-priority="none" title="Set priority" aria-label="Set priority">
+              <span class="todo-priority-dot"></span>
+            </button>
+            <input type="text" class="todo-input" id="todoInput" placeholder="Add a task..." autocomplete="off">
+            <input type="date" class="todo-date-input" id="todoDateInput" title="Set due date">
+          </div>
         </form>
       </div>
     </div>

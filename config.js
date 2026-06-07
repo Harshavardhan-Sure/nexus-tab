@@ -131,6 +131,7 @@ const DEFAULT_SETTINGS = {
   accentColor: 'emerald',
   accentHex: '#3ecf8e',
   showClock: true,
+  use24hClock: false,
   customName: 'Harsha',
   useUnsplash: false,
   showGreeting: true,

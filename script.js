@@ -308,9 +308,19 @@ function applyAccentColor() {
   root.setProperty('--text-accent', hex);
   root.setProperty('--border-active', hex);
 
+  // Check if current color matches a preset swatch
+  const isPreset = Object.values(ACCENT_COLORS).includes(hex.toLowerCase());
+
   document.querySelectorAll('.color-swatch').forEach(s => {
-    s.classList.toggle('active', s.dataset.color === settings.accentColor);
+    s.classList.toggle('active', s.dataset.color === settings.accentColor && isPreset);
   });
+
+  // Sync custom color input
+  const customInput = $('customColorInput');
+  if (customInput) {
+    customInput.value = hex;
+    customInput.classList.toggle('active', !isPreset);
+  }
 }
 
 function getEngineAccent(engine) {
@@ -445,6 +455,8 @@ function renderGreeting() {
 // ══════════════════════════════════════════════════════════════════════
 //  QUICK LINKS
 // ══════════════════════════════════════════════════════════════════════
+let qlDragIndex = -1;
+
 function renderQuickLinks() {
   dom.quickLinks.innerHTML = '';
   const frag = document.createDocumentFragment();
@@ -453,6 +465,41 @@ function renderQuickLinks() {
     const a = el('a', 'quick-link');
     a.href = link.url;
     a.title = link.name;
+    a.draggable = true;
+    a.dataset.qlIndex = index;
+
+    // Drag-and-drop handlers
+    a.addEventListener('dragstart', (e) => {
+      qlDragIndex = index;
+      a.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(index));
+    });
+    a.addEventListener('dragend', () => {
+      a.classList.remove('is-dragging');
+      document.querySelectorAll('.quick-link.drag-over').forEach(el => el.classList.remove('drag-over'));
+      qlDragIndex = -1;
+    });
+    a.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      a.classList.add('drag-over');
+    });
+    a.addEventListener('dragleave', () => {
+      a.classList.remove('drag-over');
+    });
+    a.addEventListener('drop', (e) => {
+      e.preventDefault();
+      a.classList.remove('drag-over');
+      const fromIndex = qlDragIndex;
+      const toIndex = index;
+      if (fromIndex >= 0 && fromIndex !== toIndex) {
+        const [moved] = quickLinks.splice(fromIndex, 1);
+        quickLinks.splice(toIndex, 0, moved);
+        saveQuickLinks();
+        renderQuickLinks();
+      }
+    });
 
     const iconWrap = el('div', 'quick-link-icon');
     const img = document.createElement('img');
@@ -507,6 +554,7 @@ const TOGGLE_MAP = {
   toggleHistoryResults: 'showHistoryResults',
   toggleTopSitesResults:'showTopSitesResults',
   toggleUnsplash:        'useUnsplash',
+  toggle24hClock:        'use24hClock',
 };
 
 function applyVisibilitySettings() {
@@ -2134,7 +2182,7 @@ function bindEvents() {
     if (e.target === dom.helpOverlay) closeHelp();
   });
 
-  // Color picker (delegated)
+  // Color picker (delegated — preset swatches)
   dom.colorPicker.addEventListener('click', (e) => {
     const swatch = e.target.closest('.color-swatch');
     if (!swatch) return;
@@ -2146,6 +2194,20 @@ function bindEvents() {
     renderChips();
   });
 
+  // Custom color picker input
+  const customColorInput = $('customColorInput');
+  if (customColorInput) {
+    customColorInput.addEventListener('input', () => {
+      const hex = customColorInput.value;
+      settings.accentColor = 'custom';
+      settings.accentHex = hex;
+      saveSettings();
+      applyAccentColor();
+      updateSearchEnginePrefix();
+      renderChips();
+    });
+  }
+
   // Display toggles
   Object.entries(TOGGLE_MAP).forEach(([elId, key]) => {
     const el = $(elId);
@@ -2153,6 +2215,8 @@ function bindEvents() {
       settings[key] = el.checked;
       saveSettings();
       applyVisibilitySettings();
+      // Immediately refresh clock when 24h toggle changes
+      if (key === 'use24hClock') updateClock();
     });
   });
 
@@ -2217,13 +2281,42 @@ function bindEvents() {
 
   // V3 Widget Bindings
   dom.todoToggle.addEventListener('click', toggleTodoWidget);
+
+  // Priority cycle button
+  const todoPriorityBtn = $('todoPriorityBtn');
+  if (todoPriorityBtn) {
+    todoPriorityBtn.addEventListener('click', () => {
+      const current = todoPriorityBtn.dataset.priority || 'none';
+      const idx = PRIORITY_CYCLE.indexOf(current);
+      const next = PRIORITY_CYCLE[(idx + 1) % PRIORITY_CYCLE.length];
+      todoPriorityBtn.dataset.priority = next;
+    });
+  }
+
+  // Date input visual sync
+  const todoDateInput = $('todoDateInput');
+  if (todoDateInput) {
+    todoDateInput.addEventListener('change', () => {
+      todoDateInput.classList.toggle('has-date', !!todoDateInput.value);
+    });
+  }
+
   dom.todoForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = dom.todoInput.value.trim();
     if (text) {
-      todos.push({ text, completed: false });
+      const priority = todoPriorityBtn ? todoPriorityBtn.dataset.priority || 'none' : 'none';
+      const dueDate = todoDateInput ? todoDateInput.value || '' : '';
+      todos.push({ text, completed: false, priority, dueDate });
       saveTodos();
       dom.todoInput.value = '';
+      // Reset priority button to none
+      if (todoPriorityBtn) todoPriorityBtn.dataset.priority = 'none';
+      // Reset date input
+      if (todoDateInput) {
+        todoDateInput.value = '';
+        todoDateInput.classList.remove('has-date');
+      }
       renderTodos();
     }
   });
@@ -2461,12 +2554,19 @@ function updateClock() {
   // Format Time
   let hours = now.getHours();
   const minutes = String(now.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
   
-  if (dom.clockTime) {
-    dom.clockTime.innerHTML = `${hours}:${minutes}<span class="clock-ampm">${ampm}</span>`;
+  if (settings.use24hClock) {
+    const h24 = String(hours).padStart(2, '0');
+    if (dom.clockTime) {
+      dom.clockTime.innerHTML = `${h24}:${minutes}`;
+    }
+  } else {
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    if (dom.clockTime) {
+      dom.clockTime.innerHTML = `${hours}:${minutes}<span class="clock-ampm">${ampm}</span>`;
+    }
   }
   
   // Format Date (e.g., "Monday, June 1")
@@ -2582,33 +2682,93 @@ function closeWidgetPanels(except = '') {
   }
 }
 
+const PRIORITY_CYCLE = ['none', 'high', 'medium', 'low'];
+const PRIORITY_WEIGHT = { high: 0, medium: 1, low: 2, none: 3 };
+
+function formatDueDate(dateStr) {
+  if (!dateStr) return null;
+  const due = new Date(dateStr + 'T00:00:00');
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const diffDays = Math.floor((due - today) / 86400000);
+
+  if (diffDays < 0) return { text: 'Overdue', cls: 'overdue' };
+  if (diffDays === 0) return { text: 'Today', cls: 'today' };
+  if (diffDays === 1) return { text: 'Tomorrow', cls: 'upcoming' };
+  if (diffDays <= 7) return { text: `${diffDays}d`, cls: 'upcoming' };
+  return { text: due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), cls: 'upcoming' };
+}
+
+function sortTodos(items) {
+  return items
+    .map((t, i) => ({ ...t, _i: i }))
+    .sort((a, b) => {
+      // Incomplete first
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      // Then by priority weight
+      const pa = PRIORITY_WEIGHT[a.priority || 'none'];
+      const pb = PRIORITY_WEIGHT[b.priority || 'none'];
+      if (pa !== pb) return pa - pb;
+      // Then by due date (earliest first, no-date last)
+      const da = a.dueDate || '';
+      const db = b.dueDate || '';
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      if (da && db) return da.localeCompare(db);
+      return 0;
+    });
+}
+
 function renderTodos() {
   dom.todoList.innerHTML = '';
   const frag = document.createDocumentFragment();
-  todos.forEach((task, index) => {
+  const sorted = sortTodos(todos);
+
+  sorted.forEach((task) => {
+    const origIndex = task._i;
     const div = el('div', `todo-item ${task.completed ? 'completed' : ''}`);
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.checked = task.completed;
-    cb.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
+    cb.addEventListener('click', (e) => e.stopPropagation());
     cb.addEventListener('change', () => {
-      todos[index].completed = cb.checked;
+      todos[origIndex].completed = cb.checked;
       saveTodos();
       renderTodos();
     });
+
+    // Content wrapper (text + meta row)
+    const content = el('div', 'todo-item-content');
+    content.appendChild(el('span', 'todo-item-text', task.text));
+
+    // Meta row: priority dot + due date badge
+    const priority = task.priority || 'none';
+    const dueInfo = formatDueDate(task.dueDate);
+    if (priority !== 'none' || dueInfo) {
+      const meta = el('div', 'todo-item-meta');
+      if (priority !== 'none') {
+        const dot = el('span', 'todo-priority-indicator');
+        dot.dataset.priority = priority;
+        meta.appendChild(dot);
+      }
+      if (dueInfo) {
+        meta.appendChild(el('span', `todo-due-badge ${dueInfo.cls}`, dueInfo.text));
+      }
+      content.appendChild(meta);
+    }
 
     const del = el('button', 'todo-item-remove', '×');
     del.addEventListener('click', (e) => {
       e.stopPropagation();
-      todos.splice(index, 1);
+      todos.splice(origIndex, 1);
       saveTodos();
       renderTodos();
     });
 
-    div.append(cb, el('span', null, task.text), del);
+    div.append(cb, content, del);
     frag.appendChild(div);
   });
   dom.todoList.appendChild(frag);

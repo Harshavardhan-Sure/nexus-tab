@@ -327,6 +327,23 @@ body {
   font-weight: 450;
 }
 
+/* Quick Link Drag-and-Drop */
+.quick-link[draggable="true"] {
+  cursor: grab;
+}
+
+.quick-link.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.quick-link.drag-over {
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 0 0 2px var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-dim);
+}
+
 /* ================================================================
    ENGINE LABEL
    ================================================================ */
@@ -1116,6 +1133,63 @@ body.catalog-open .greeting {
 .color-picker {
   display: flex;
   gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Custom color input — styled as a swatch with label */
+.custom-color-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.custom-color-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  transition: all var(--transition-fast);
+}
+
+.custom-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 50%;
+}
+
+.custom-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.custom-color-input::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.custom-color-input:hover {
+  transform: scale(1.15);
+}
+
+.custom-color-input.active {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 12px -2px currentColor;
+}
+
+.custom-color-label {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .color-swatch {
@@ -1931,10 +2005,12 @@ body.catalog-open .greeting {
 
 .todo-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 0.85rem;
   color: var(--text-primary);
+  padding: 4px 0;
+  position: relative;
 }
 
 .todo-item input[type="checkbox"] {
@@ -1943,11 +2019,87 @@ body.catalog-open .greeting {
   height: 16px;
   cursor: pointer;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.todo-item.completed span {
+.todo-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-item-text {
+  word-break: break-word;
+}
+
+.todo-item.completed .todo-item-text {
   text-decoration: line-through;
   color: var(--text-muted);
+}
+
+.todo-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Priority dot — inline indicator */
+.todo-priority-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.todo-priority-indicator[data-priority="high"] {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.45);
+}
+
+.todo-priority-indicator[data-priority="medium"] {
+  background: #f0c674;
+  box-shadow: 0 0 6px rgba(240, 198, 116, 0.4);
+}
+
+.todo-priority-indicator[data-priority="low"] {
+  background: #60a5fa;
+  box-shadow: 0 0 6px rgba(96, 165, 250, 0.35);
+}
+
+/* Due date badge */
+.todo-due-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.todo-due-badge.overdue {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.todo-due-badge.today {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid rgba(62, 207, 142, 0.2);
+}
+
+.todo-due-badge.upcoming {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+body.theme-light .todo-due-badge.upcoming {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .todo-item-remove {
@@ -1959,6 +2111,7 @@ body.catalog-open .greeting {
   opacity: 0;
   font-size: 1.1rem;
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .todo-item:hover .todo-item-remove {
@@ -1969,13 +2122,22 @@ body.catalog-open .greeting {
   color: #ef4444;
 }
 
+/* Input row with priority + date */
 .todo-input-group {
   display: flex;
+  flex-direction: column;
   margin: 0;
 }
 
+.todo-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .todo-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -1988,6 +2150,90 @@ body.catalog-open .greeting {
 .todo-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* Priority cycle button */
+.todo-priority-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.todo-priority-btn:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+.todo-priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-default);
+  transition: all var(--transition-fast);
+}
+
+.todo-priority-btn[data-priority="high"] .todo-priority-dot {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.todo-priority-btn[data-priority="medium"] .todo-priority-dot {
+  background: #f0c674;
+  box-shadow: 0 0 8px rgba(240, 198, 116, 0.45);
+}
+
+.todo-priority-btn[data-priority="low"] .todo-priority-dot {
+  background: #60a5fa;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+}
+
+/* Date input — compact */
+.todo-date-input {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  color: transparent;
+  font-size: 0;
+  padding: 0;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.todo-date-input:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+.todo-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  padding: 4px;
+}
+
+.todo-date-input:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+}
+
+/* When date is set, show a subtle accent ring */
+.todo-date-input.has-date {
+  border-color: var(--accent);
+  background: var(--accent-dim);
 }
 
 /* ================================================================
