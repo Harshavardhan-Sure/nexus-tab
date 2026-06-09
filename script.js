@@ -105,6 +105,9 @@ function cacheDom() {
     notesToggle:    $('notesToggle'),
     notesPanel:     $('notesPanel'),
     notesTextarea:  $('notesTextarea'),
+    notesPreviewToggle: $('notesPreviewToggle'),
+    notesPreview:       $('notesPreview'),
+    notesToggleText:    $('notesToggleText'),
     timerToggle:    $('timerToggle'),
     timerPanel:     $('timerPanel'),
     timerDisplay:   $('timerDisplay'),
@@ -1473,6 +1476,129 @@ function navigateVertical(direction) {
 // ══════════════════════════════════════════════════════════════════════
 //  STICKY NOTES (lazy-initialized on first open)
 // ══════════════════════════════════════════════════════════════════════
+// Markdown Parser for Notes Widget
+function parseNotesMarkdown(mdText) {
+  if (!mdText) return '<p style="color: var(--text-muted); font-style: italic;">No content. Start typing...</p>';
+  
+  // Escape HTML to prevent XSS / formatting issues
+  let html = mdText
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Checkboxes/Task lists: - [ ] or - [x]
+  html = html.replace(/^\s*[-*+]\s+\[ \]\s+(.*)$/gm, '<li class="notes-preview-task-list-item"><input type="checkbox" disabled> $1</li>');
+  html = html.replace(/^\s*[-*+]\s+\[[xX]\]\s+(.*)$/gm, '<li class="notes-preview-task-list-item"><input type="checkbox" checked disabled> <del>$1</del></li>');
+
+  // Headers
+  html = html.replace(/^#{3}\s+(.*)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^#{2}\s+(.*)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+
+  // Blockquotes
+  html = html.replace(/^\>\s+(.*)$/gm, '<blockquote>$1</blockquote>');
+
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr style="border: none; border-top: 1px solid var(--border-subtle); margin: 8px 0;">');
+
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+  // Italics
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+  // Strikethrough
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
+  // Inline Code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // Bullet items
+  html = html.replace(/^\s*[-*+]\s+(?!(?:<input|<li))(.*)$/gm, '<li>$1</li>');
+
+  // Ordered list items
+  html = html.replace(/^\s*\d+\.\s+(.*)$/gm, '<li>$1</li>');
+
+  // Process line breaks and paragraphs/lists grouping
+  const lines = html.split('\n');
+  const result = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) {
+      if (inList) {
+        result.push('</ul>');
+        inList = false;
+      }
+      continue;
+    }
+
+    const isBlock = /^(<h[1-3]>|<blockquote>|<hr>|<pre>|<li>|<input)/.test(line);
+
+    if (line.startsWith('<li>') || line.startsWith('<li class=')) {
+      if (!inList) {
+        result.push('<ul style="margin: 0 0 8px 0; padding-left: 18px;">');
+        inList = true;
+      }
+      result.push(line);
+    } else {
+      if (inList) {
+        result.push('</ul>');
+        inList = false;
+      }
+      if (isBlock) {
+        result.push(line);
+      } else {
+        result.push(`<p>${line}</p>`);
+      }
+    }
+  }
+
+  if (inList) {
+    result.push('</ul>');
+  }
+
+  return result.join('\n');
+}
+
+function toggleNotesPreview(forceState) {
+  const isPreview = typeof forceState === 'boolean' 
+    ? forceState 
+    : dom.notesPreview.style.display === 'none';
+
+  if (isPreview) {
+    // Render Markdown
+    dom.notesPreview.innerHTML = parseNotesMarkdown(dom.notesTextarea.value);
+    dom.notesTextarea.style.display = 'none';
+    dom.notesPreview.style.display = 'block';
+    
+    // Toggle icons & text
+    dom.notesPreviewToggle.querySelector('.notes-edit-icon').style.display = 'inline-block';
+    dom.notesPreviewToggle.querySelector('.notes-preview-icon').style.display = 'none';
+    dom.notesToggleText.textContent = 'Edit';
+    
+    safeSetRaw('nexus-notes-preview-active', 'true');
+    dom.notesPreview.focus();
+  } else {
+    dom.notesTextarea.style.display = 'block';
+    dom.notesPreview.style.display = 'none';
+    
+    // Toggle icons & text
+    dom.notesPreviewToggle.querySelector('.notes-edit-icon').style.display = 'none';
+    dom.notesPreviewToggle.querySelector('.notes-preview-icon').style.display = 'inline-block';
+    dom.notesToggleText.textContent = 'Preview';
+    
+    safeSetRaw('nexus-notes-preview-active', 'false');
+    dom.notesTextarea.focus();
+  }
+}
+
 function initNotes() {
   if (notesInitialized) return;
   notesInitialized = true;
@@ -1485,6 +1611,25 @@ function initNotes() {
     clearTimeout(debounce);
     debounce = setTimeout(() => safeSetRaw(STORAGE_KEYS.notes, dom.notesTextarea.value), 300);
   });
+
+  // Toggle button click listener
+  dom.notesPreviewToggle.addEventListener('click', () => {
+    toggleNotesPreview();
+  });
+
+  // Ctrl+P / Cmd+P listener within notesPanel
+  dom.notesPanel.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      toggleNotesPreview();
+    }
+  });
+
+  // Restore preview state from previous session
+  const wasPreviewActive = safeGetRaw('nexus-notes-preview-active', 'false') === 'true';
+  if (wasPreviewActive) {
+    toggleNotesPreview(true);
+  }
 }
 
 function toggleNotes() {
@@ -1494,7 +1639,12 @@ function toggleNotes() {
   dom.notesToggle.classList.toggle('active', isVisible);
   if (isVisible) {
     initNotes();
-    dom.notesTextarea.focus();
+    const wasPreviewActive = safeGetRaw('nexus-notes-preview-active', 'false') === 'true';
+    if (wasPreviewActive) {
+      dom.notesPreview.focus();
+    } else {
+      dom.notesTextarea.focus();
+    }
   }
 }
 
