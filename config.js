@@ -10,7 +10,7 @@ const ENGINE_CATEGORIES = [
       { id: 'duckduckgo',  label: 'DuckDuckGo',  prefix: 'ddg',  url: 'https://duckduckgo.com/?q=' },
       { id: 'brave',       label: 'Brave',       prefix: 'b',    url: 'https://search.brave.com/search?q=' },
       { id: 'startpage',   label: 'Startpage',   prefix: 'sp',   url: 'https://www.startpage.com/do/search?q=' },
-      { id: 'gdrive',      label: 'Google Drive', prefix: 'gd',   url: 'https://drive.google.com/drive/search?q=' },
+      { id: 'gdrive',      label: 'Drive', prefix: 'gd',   url: 'https://drive.google.com/drive/search?q=' },
       { id: 'translate',   label: 'Translate',    prefix: 'tr',   url: 'https://translate.google.com/?sl=auto&tl=en&text=' },
     ],
   },
