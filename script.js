@@ -99,9 +99,9 @@ function cacheDom() {
     settingsBtn:    $('settingsBtn'),
     settingsPanel:  $('settingsPanel'),
     settingsOverlay:$('settingsOverlay'),
-    settingsClose:  $('settingsClose'),
-    settingsTabs:   $('settingsTabs'),
-    colorPicker:    $('colorPicker'),
+    settingsClose:  null,
+    settingsTabs:   null,
+    colorPicker:    null,
     notesToggle:    $('notesToggle'),
     notesPanel:     $('notesPanel'),
     notesTextarea:  $('notesTextarea'),
@@ -116,17 +116,17 @@ function cacheDom() {
     incognitoBadge: $('incognitoBadge'),
     quickLinkModal: $('quickLinkModal'),
     engineModal:    $('engineModal'),
-    quickLinksManager:    $('quickLinksManager'),
-    customEnginesManager: $('customEnginesManager'),
-    usageStats:     $('usageStats'),
-    toggleLightMode:$('toggleLightMode'),
-    bgInput:        $('bgInput'),
-    uploadBgBtn:    $('uploadBgBtn'),
-    clearBgBtn:     $('clearBgBtn'),
-    bgDimInput:     $('bgDimInput'),
-    bgBlurInput:    $('bgBlurInput'),
-    bgPositionSelect:$('bgPositionSelect'),
-    densityControl: $('densityControl'),
+    quickLinksManager:    null,
+    customEnginesManager: null,
+    usageStats:     null,
+    toggleLightMode:null,
+    bgInput:        null,
+    uploadBgBtn:    null,
+    clearBgBtn:     null,
+    bgDimInput:     null,
+    bgBlurInput:    null,
+    bgPositionSelect:null,
+    densityControl: null,
     customBg:       $('customBg'),
     todoToggle:     $('todoToggle'),
     todoPanel:      $('todoPanel'),
@@ -149,12 +149,12 @@ function cacheDom() {
     weatherHumidity:            $('weatherHumidity'),
     weatherWind:                $('weatherWind'),
     weatherForecast:            $('weatherForecast'),
-    toggleWeather:              $('toggleWeather'),
-    weatherLocationInput:       $('weatherLocationInput'),
-    weatherLocationSearchBtn:   $('weatherLocationSearchBtn'),
-    weatherLocationStatus:      $('weatherLocationStatus'),
-    weatherUnitControl:         $('weatherUnitControl'),
-    customNameInput:            $('customNameInput'),
+    toggleWeather:              null,
+    weatherLocationInput:       null,
+    weatherLocationSearchBtn:   null,
+    weatherLocationStatus:      null,
+    weatherUnitControl:         null,
+    customNameInput:            null,
     bgAttribution:              $('bgAttribution'),
     attributionLink:            $('attributionLink'),
     workspaceToggle:  $('workspaceToggle'),
@@ -191,6 +191,7 @@ function init() {
   initWeather();
   bindEvents();
   dom.searchInput.focus();
+  document.body.classList.add('fouc-ready');
 
   // Phase 2: Deferred — non-critical, off-screen, or lazy
   requestAnimationFrame(() => {
@@ -1220,19 +1221,57 @@ function clearPrefixHighlight() {
   updateSearchEnginePrefix();
 }
 
-// ── Hint Bar ─────────────────────────────────────────────────────────
-function showHint(message, type = 'info') {
-  dom.hintBar.textContent = message;
-  dom.hintBar.className = `hint-bar hint-${type} hint-visible`;
+// Stacking Toast Notifications
+function showToast(message, type = 'info', duration = 3000) {
+  const container = $('toastContainer') || document.body;
+  
+  // Create toast element
+  const toast = el('div', `toast toast-${type}`);
+  
+  // Add icon
+  const iconSpan = el('span', 'toast-icon');
+  let iconSvg = '';
+  if (type === 'success') {
+    iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  } else if (type === 'error') {
+    iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  } else if (type === 'warning') {
+    iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  } else {
+    // Info
+    iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+  }
+  iconSpan.innerHTML = iconSvg;
+  
+  // Add content
+  const contentSpan = el('span', 'toast-content', message);
+  
+  // Add close button
+  const closeBtn = el('button', 'toast-close', '×');
+  closeBtn.type = 'button';
+  closeBtn.title = 'Dismiss';
+  
+  toast.append(iconSpan, contentSpan, closeBtn);
+  container.appendChild(toast);
+  
+  // Slide out and remove helper
+  const dismissToast = () => {
+    if (toast.classList.contains('toast-exit')) return;
+    toast.classList.add('toast-exit');
+    toast.addEventListener('animationend', () => {
+      toast.remove();
+    });
+  };
+  
+  closeBtn.addEventListener('click', dismissToast);
+  
+  // Auto dismiss timeout
+  setTimeout(dismissToast, duration);
 }
 
-function flashHint(message, type = 'info', duration = 2000) {
-  showHint(message, type);
-  setTimeout(hideHint, duration);
-}
-
-function hideHint() {
-  dom.hintBar.classList.remove('hint-visible');
+// Map flashHint to showToast for backward compatibility
+function flashHint(message, type = 'info', duration = 3000) {
+  showToast(message, type, duration);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -1730,7 +1769,191 @@ function toggleTimer() {
 // ══════════════════════════════════════════════════════════════════════
 //  SETTINGS PANEL
 // ══════════════════════════════════════════════════════════════════════
+let settingsInitialized = false;
+
+function ensureSettingsInitialized() {
+  if (settingsInitialized) return;
+  settingsInitialized = true;
+
+  // Clone and append settings template
+  const template = $('settingsTemplate');
+  if (template) {
+    dom.settingsPanel.appendChild(template.content.cloneNode(true));
+  }
+
+  // Recache settings DOM elements
+  dom.settingsClose = $('settingsClose');
+  dom.settingsTabs = $('settingsTabs');
+  dom.colorPicker = $('colorPicker');
+  dom.toggleLightMode = $('toggleLightMode');
+  dom.bgInput = $('bgInput');
+  dom.uploadBgBtn = $('uploadBgBtn');
+  dom.clearBgBtn = $('clearBgBtn');
+  dom.bgDimInput = $('bgDimInput');
+  dom.bgBlurInput = $('bgBlurInput');
+  dom.bgPositionSelect = $('bgPositionSelect');
+  dom.densityControl = $('densityControl');
+  dom.toggleWeather = $('toggleWeather');
+  dom.weatherLocationInput = $('weatherLocationInput');
+  dom.weatherLocationSearchBtn = $('weatherLocationSearchBtn');
+  dom.weatherLocationStatus = $('weatherLocationStatus');
+  dom.weatherUnitControl = $('weatherUnitControl');
+  dom.customNameInput = $('customNameInput');
+  dom.quickLinksManager = $('quickLinksManager');
+  dom.customEnginesManager = $('customEnginesManager');
+  dom.usageStats = $('usageStats');
+
+  // Initialize values & visibilities
+  applyVisibilitySettings();
+  initWeather();
+  applyLayoutDensity();
+  applyBackgroundControls();
+  
+  if (dom.clearBgBtn) {
+    dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : (settings.hasBackground ? 'inline-block' : 'none');
+  }
+
+  // Bind settings listeners
+  bindSettingsListeners();
+}
+
+function bindSettingsListeners() {
+  dom.settingsClose.addEventListener('click', closeSettings);
+  dom.settingsOverlay.addEventListener('click', closeSettings);
+  dom.settingsTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.settings-tab');
+    if (tab) activateSettingsTab(tab.dataset.settingsTab);
+  });
+
+  // Color picker (swatches)
+  dom.colorPicker.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.color-swatch');
+    if (!swatch) return;
+    settings.accentColor = swatch.dataset.color;
+    settings.accentHex = swatch.dataset.hex;
+    saveSettings();
+    applyAccentColor();
+    updateSearchEnginePrefix();
+    renderChips();
+  });
+
+  // Custom color input
+  const customColorInput = $('customColorInput');
+  if (customColorInput) {
+    customColorInput.addEventListener('input', () => {
+      settings.accentColor = 'custom';
+      settings.accentHex = customColorInput.value;
+      saveSettings();
+      applyAccentColor();
+      updateSearchEnginePrefix();
+      renderChips();
+    });
+  }
+
+  // Display toggles
+  Object.entries(TOGGLE_MAP).forEach(([elId, key]) => {
+    const el = $(elId);
+    if (el) el.addEventListener('change', () => {
+      settings[key] = el.checked;
+      saveSettings();
+      applyVisibilitySettings();
+      if (key === 'use24hClock') updateClock();
+    });
+  });
+
+  if (dom.customNameInput) {
+    dom.customNameInput.addEventListener('input', () => {
+      settings.customName = dom.customNameInput.value.trim();
+      saveSettings();
+      renderGreeting();
+    });
+  }
+
+  const unsplashToggle = $('toggleUnsplash');
+  if (unsplashToggle) {
+    unsplashToggle.addEventListener('change', () => {
+      loadBackground();
+    });
+  }
+
+  dom.densityControl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-density]');
+    if (!btn) return;
+    settings.layoutDensity = btn.dataset.density;
+    saveSettings();
+    applyLayoutDensity();
+  });
+
+  dom.bgDimInput.addEventListener('input', () => {
+    settings.backgroundDim = Number(dom.bgDimInput.value);
+    saveSettings();
+    applyBackgroundControls();
+  });
+
+  dom.bgBlurInput.addEventListener('input', () => {
+    settings.backgroundBlur = Number(dom.bgBlurInput.value);
+    saveSettings();
+    applyBackgroundControls();
+  });
+
+  dom.bgPositionSelect.addEventListener('change', () => {
+    settings.backgroundPosition = dom.bgPositionSelect.value;
+    saveSettings();
+    applyBackgroundControls();
+  });
+
+  // Settings buttons
+  $('addQuickLinkBtn').addEventListener('click', () => openQuickLinkModal());
+  $('addCustomEngineBtn').addEventListener('click', () => openEngineModal());
+  $('exportBtn').addEventListener('click', exportSettings);
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); });
+  $('clearDataBtn').addEventListener('click', clearAllData);
+
+  // Weather Settings Bindings
+  if (dom.weatherLocationSearchBtn) {
+    dom.weatherLocationSearchBtn.addEventListener('click', searchWeatherLocation);
+  }
+  if (dom.weatherLocationInput) {
+    dom.weatherLocationInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchWeatherLocation();
+      }
+    });
+  }
+  if (dom.weatherUnitControl) {
+    dom.weatherUnitControl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-unit]');
+      if (!btn) return;
+      settings.weatherUnit = btn.dataset.unit;
+      saveSettings();
+      
+      dom.weatherUnitControl.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.unit === settings.weatherUnit);
+      });
+      renderWeatherFromCache();
+    });
+  }
+
+  dom.uploadBgBtn.addEventListener('click', () => dom.bgInput.click());
+  dom.clearBgBtn.addEventListener('click', clearBackground);
+  dom.bgInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => saveBackground(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+  dom.toggleLightMode.addEventListener('change', () => {
+    settings.lightMode = dom.toggleLightMode.checked;
+    saveSettings();
+    applyTheme();
+  });
+}
+
 function openSettings() {
+  ensureSettingsInitialized();
   dom.settingsPanel.classList.add('open');
   dom.settingsOverlay.classList.add('visible');
   activateSettingsTab(getActiveSettingsTab() || 'appearance');
@@ -2317,107 +2540,17 @@ function bindEvents() {
     hideRecentSearches();
   });
 
-  // Settings panel
+  // Settings panel toggle
   dom.settingsBtn.addEventListener('click', openSettings);
-  dom.settingsClose.addEventListener('click', closeSettings);
   dom.settingsOverlay.addEventListener('click', closeSettings);
-  dom.settingsTabs.addEventListener('click', (e) => {
-    const tab = e.target.closest('.settings-tab');
-    if (tab) activateSettingsTab(tab.dataset.settingsTab);
-  });
+
+  // Help panel
   dom.helpBtn.addEventListener('click', () => openHelp(false));
   dom.helpClose.addEventListener('click', closeHelp);
   dom.helpStartBtn.addEventListener('click', closeHelp);
   dom.helpOverlay.addEventListener('click', (e) => {
     if (e.target === dom.helpOverlay) closeHelp();
   });
-
-  // Color picker (delegated — preset swatches)
-  dom.colorPicker.addEventListener('click', (e) => {
-    const swatch = e.target.closest('.color-swatch');
-    if (!swatch) return;
-    settings.accentColor = swatch.dataset.color;
-    settings.accentHex = swatch.dataset.hex;
-    saveSettings();
-    applyAccentColor();
-    updateSearchEnginePrefix();
-    renderChips();
-  });
-
-  // Custom color picker input
-  const customColorInput = $('customColorInput');
-  if (customColorInput) {
-    customColorInput.addEventListener('input', () => {
-      const hex = customColorInput.value;
-      settings.accentColor = 'custom';
-      settings.accentHex = hex;
-      saveSettings();
-      applyAccentColor();
-      updateSearchEnginePrefix();
-      renderChips();
-    });
-  }
-
-  // Display toggles
-  Object.entries(TOGGLE_MAP).forEach(([elId, key]) => {
-    const el = $(elId);
-    if (el) el.addEventListener('change', () => {
-      settings[key] = el.checked;
-      saveSettings();
-      applyVisibilitySettings();
-      // Immediately refresh clock when 24h toggle changes
-      if (key === 'use24hClock') updateClock();
-    });
-  });
-
-  if (dom.customNameInput) {
-    dom.customNameInput.addEventListener('input', () => {
-      settings.customName = dom.customNameInput.value.trim();
-      saveSettings();
-      renderGreeting();
-    });
-  }
-
-  const unsplashToggle = $('toggleUnsplash');
-  if (unsplashToggle) {
-    unsplashToggle.addEventListener('change', () => {
-      loadBackground();
-    });
-  }
-
-  dom.densityControl.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-density]');
-    if (!btn) return;
-    settings.layoutDensity = btn.dataset.density;
-    saveSettings();
-    applyLayoutDensity();
-  });
-
-  dom.bgDimInput.addEventListener('input', () => {
-    settings.backgroundDim = Number(dom.bgDimInput.value);
-    saveSettings();
-    applyBackgroundControls();
-  });
-
-  dom.bgBlurInput.addEventListener('input', () => {
-    settings.backgroundBlur = Number(dom.bgBlurInput.value);
-    saveSettings();
-    applyBackgroundControls();
-  });
-
-  dom.bgPositionSelect.addEventListener('change', () => {
-    settings.backgroundPosition = dom.bgPositionSelect.value;
-    saveSettings();
-    applyBackgroundControls();
-  });
-
-  // Settings buttons
-  $('addQuickLinkBtn').addEventListener('click', () => openQuickLinkModal());
-  $('addCustomEngineBtn').addEventListener('click', () => openEngineModal());
-  $('exportBtn').addEventListener('click', exportSettings);
-  $('importBtn').addEventListener('click', () => $('importFile').click());
-  $('importFile').addEventListener('change', (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); });
-  $('clearDataBtn').addEventListener('click', clearAllData);
 
   // Widgets
   dom.notesToggle.addEventListener('click', toggleNotes);
@@ -2460,9 +2593,7 @@ function bindEvents() {
       todos.push({ text, completed: false, priority, dueDate });
       saveTodos();
       dom.todoInput.value = '';
-      // Reset priority button to none
       if (todoPriorityBtn) todoPriorityBtn.dataset.priority = 'none';
-      // Reset date input
       if (todoDateInput) {
         todoDateInput.value = '';
         todoDateInput.classList.remove('has-date');
@@ -2478,21 +2609,6 @@ function bindEvents() {
     saveCurrentTabsAsWorkspace();
   });
 
-  dom.uploadBgBtn.addEventListener('click', () => dom.bgInput.click());
-  dom.clearBgBtn.addEventListener('click', clearBackground);
-  dom.bgInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => saveBackground(ev.target.result);
-    reader.readAsDataURL(file);
-  });
-  dom.toggleLightMode.addEventListener('change', () => {
-    settings.lightMode = dom.toggleLightMode.checked;
-    saveSettings();
-    applyTheme();
-  });
-
   // Modal overlay dismiss
   dom.quickLinkModal.addEventListener('click', (e) => {
     if (e.target === dom.quickLinkModal) dom.quickLinkModal.style.display = 'none';
@@ -2500,35 +2616,6 @@ function bindEvents() {
   dom.engineModal.addEventListener('click', (e) => {
     if (e.target === dom.engineModal) dom.engineModal.style.display = 'none';
   });
-
-  // Weather Settings Bindings
-  if (dom.weatherLocationSearchBtn) {
-    dom.weatherLocationSearchBtn.addEventListener('click', searchWeatherLocation);
-  }
-  if (dom.weatherLocationInput) {
-    dom.weatherLocationInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        searchWeatherLocation();
-      }
-    });
-  }
-  if (dom.weatherUnitControl) {
-    dom.weatherUnitControl.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-unit]');
-      if (!btn) return;
-      settings.weatherUnit = btn.dataset.unit;
-      saveSettings();
-      
-      // Update visual active classes
-      dom.weatherUnitControl.querySelectorAll('button').forEach(b => {
-        b.classList.toggle('active', b.dataset.unit === settings.weatherUnit);
-      });
-      
-      // Re-render widget using cache
-      renderWeatherFromCache();
-    });
-  }
 }
 
 // ── Consolidated click handler ───────────────────────────────────────
@@ -2626,7 +2713,9 @@ function handleGlobalKeydown(e) {
 // ══════════════════════════════════════════════════════════════════════
 function applyTheme() {
   document.body.classList.toggle('theme-light', settings.lightMode);
-  dom.toggleLightMode.checked = settings.lightMode;
+  if (dom.toggleLightMode) {
+    dom.toggleLightMode.checked = settings.lightMode;
+  }
 }
 
 // IndexedDB logic for Background Image to bypass 5MB localStorage limit
@@ -2756,7 +2845,7 @@ async function loadBackground() {
   if (settings.useUnsplash) {
     const dailyUrl = getDailyUnsplashWallpaper();
     applyBackground(dailyUrl);
-    dom.clearBgBtn.style.display = 'none';
+    if (dom.clearBgBtn) dom.clearBgBtn.style.display = 'none';
     return;
   }
   if (!settings.hasBackground) {
@@ -2782,7 +2871,7 @@ function clearBackgroundUI() {
   dom.customBg.style.backgroundImage = '';
   dom.customBg.style.opacity = '0';
   document.body.classList.remove('has-bg');
-  dom.clearBgBtn.style.display = 'none';
+  if (dom.clearBgBtn) dom.clearBgBtn.style.display = 'none';
   if (dom.bgAttribution) {
     dom.bgAttribution.style.display = 'none';
   }
@@ -2792,7 +2881,9 @@ function applyBackground(dataUrl) {
   dom.customBg.style.backgroundImage = `url("${dataUrl.replace(/"/g, '\\"')}")`;
   dom.customBg.style.opacity = '1';
   document.body.classList.add('has-bg');
-  dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : 'inline-block';
+  if (dom.clearBgBtn) {
+    dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : 'inline-block';
+  }
 
   // Attribution
   if (settings.useUnsplash && dom.bgAttribution && dom.attributionLink) {

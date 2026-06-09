@@ -10,6 +10,7 @@
   <link rel="dns-prefetch" href="https://suggestqueries.google.com">
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add('fouc-prevent');</script>
 </head>
 <body>
   <div class="custom-bg" id="customBg"></div>
@@ -60,7 +61,10 @@
   <div class="settings-overlay" id="settingsOverlay"></div>
 
   <!-- Settings Panel -->
-  <div class="settings-panel" id="settingsPanel">
+  <div class="settings-panel" id="settingsPanel"></div>
+
+  <!-- Settings Panel Template -->
+  <template id="settingsTemplate">
     <div class="settings-header">
       <h2>Settings</h2>
       <button class="settings-close" id="settingsClose" aria-label="Close settings">
@@ -193,7 +197,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </template>
 
   <!-- Main Content -->
   <main class="container">
@@ -391,6 +395,9 @@
       <button class="btn-primary help-start-btn" id="helpStartBtn">Start Using Nexus</button>
     </div>
   </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <script src="quotes.js" defer></script>
   <script src="engine-icons.js" defer></script>
