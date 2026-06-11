@@ -1269,6 +1269,19 @@ function showToast(message, type = 'info', duration = 3000) {
   setTimeout(dismissToast, duration);
 }
 
+// ── Hint Bar ─────────────────────────────────────────────────────────
+function showHint(message, type = 'info') {
+  if (!dom.hintBar) return;
+  dom.hintBar.textContent = message;
+  dom.hintBar.className = `hint-bar hint-${type} hint-visible`;
+}
+
+function hideHint() {
+  if (!dom.hintBar) return;
+  dom.hintBar.className = 'hint-bar';
+  dom.hintBar.textContent = '';
+}
+
 // Map flashHint to showToast for backward compatibility
 function flashHint(message, type = 'info', duration = 3000) {
   showToast(message, type, duration);
