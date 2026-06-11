@@ -199,6 +199,13 @@ function init() {
 
     handleInitialHash();
     maybeShowOnboarding();
+
+    // Register PWA service worker (only in standard tab context, not inside extension)
+    if ('serviceWorker' in navigator && window.location.protocol !== 'chrome-extension:') {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Nexus Tab PWA: Service Worker registered successfully on scope', reg.scope))
+        .catch(err => console.error('Nexus Tab PWA: Service Worker registration failed:', err));
+    }
   });
 }
 
@@ -1299,6 +1306,8 @@ function showDropdown(engines, mode = 'search') {
   dropdownItems.forEach((engine, index) => {
     const item = el('div', 'dropdown-item');
     item.setAttribute('data-index', index);
+    item.setAttribute('role', 'option');
+    item.id = `dropdown-option-${index}`;
 
     item.append(
       el('span', 'dropdown-prefix', engine.prefix),
@@ -1324,10 +1333,13 @@ function showDropdown(engines, mode = 'search') {
 
   dom.dropdown.appendChild(fragment);
   dom.dropdown.classList.add('dropdown-visible');
+  dom.searchInput.setAttribute('aria-expanded', 'true');
 }
 
 function hideDropdown() {
   dom.dropdown.classList.remove('dropdown-visible');
+  dom.searchInput.setAttribute('aria-expanded', 'false');
+  dom.searchInput.removeAttribute('aria-activedescendant');
   dropdownItems = [];
   dropdownIndex = -1;
 }
@@ -1339,6 +1351,11 @@ function navigateDropdown(direction) {
     ? (dropdownIndex + 1) % dropdownItems.length
     : (dropdownIndex <= 0 ? dropdownItems.length - 1 : dropdownIndex - 1);
   items.forEach((item, i) => item.classList.toggle('dropdown-item-active', i === dropdownIndex));
+  if (dropdownIndex >= 0) {
+    dom.searchInput.setAttribute('aria-activedescendant', `dropdown-option-${dropdownIndex}`);
+  } else {
+    dom.searchInput.removeAttribute('aria-activedescendant');
+  }
   return true;
 }
 
@@ -1703,54 +1720,110 @@ function toggleNotes() {
 // ══════════════════════════════════════════════════════════════════════
 //  POMODORO TIMER
 // ══════════════════════════════════════════════════════════════════════
+function saveTimerState() {
+  if (isIncognito) return;
+  const state = {
+    running: timerRunning,
+    preset: timerPreset,
+    secondsLeft: timerSeconds,
+    targetTime: timerRunning ? Date.now() + timerSeconds * 1000 : null
+  };
+  localStorage.setItem('nexus-timer', JSON.stringify(state));
+}
+
+function loadTimerState() {
+  if (isIncognito) return;
+  try {
+    const raw = localStorage.getItem('nexus-timer');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    timerPreset = parsed.preset || 25;
+    
+    if (parsed.running && parsed.targetTime) {
+      const timeLeft = Math.max(0, Math.ceil((parsed.targetTime - Date.now()) / 1000));
+      if (timeLeft > 0) {
+        timerSeconds = timeLeft;
+        timerRunning = true;
+      } else {
+        timerSeconds = 0;
+        timerRunning = false;
+      }
+    } else {
+      timerSeconds = parsed.secondsLeft !== undefined ? parsed.secondsLeft : timerPreset * 60;
+      timerRunning = false;
+    }
+  } catch (err) {
+    console.error('Failed to load timer state:', err);
+  }
+}
+
 function updateTimerDisplay() {
   const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
   const secs = String(timerSeconds % 60).padStart(2, '0');
   dom.timerDisplay.textContent = `${mins}:${secs}`;
   dom.timerDisplay.classList.toggle('timer-running', timerRunning);
   dom.timerDisplay.classList.toggle('timer-done', timerSeconds === 0 && !timerRunning);
+  
+  // Accessibility dynamic announcement details
+  const minutesLabel = Math.floor(timerSeconds / 60);
+  const secondsLabel = timerSeconds % 60;
+  dom.timerDisplay.setAttribute('aria-label', `Timer: ${minutesLabel} minute${minutesLabel !== 1 ? 's' : ''} and ${secondsLabel} second${secondsLabel !== 1 ? 's' : ''} remaining`);
 }
 
 function startTimer() {
   if (timerSeconds === 0) return;
   timerRunning = true;
   dom.timerStartBtn.textContent = 'Pause';
+  saveTimerState();
 
   timerInterval = setInterval(() => {
     timerSeconds--;
     updateTimerDisplay();
     if (timerSeconds <= 0) {
       clearInterval(timerInterval);
+      timerInterval = null;
       timerRunning = false;
       dom.timerStartBtn.textContent = 'Start';
       playTimerBeep();
       updateTimerDisplay();
+      saveTimerState();
+      
+      const alertContainer = document.getElementById('accessibilityAlert');
+      if (alertContainer) {
+        alertContainer.textContent = "Focus session completed! Time to take a break.";
+      }
     }
   }, 1000);
 }
 
 function pauseTimer() {
   clearInterval(timerInterval);
+  timerInterval = null;
   timerRunning = false;
   dom.timerStartBtn.textContent = 'Start';
   updateTimerDisplay();
+  saveTimerState();
 }
 
 function resetTimer() {
   clearInterval(timerInterval);
+  timerInterval = null;
   timerRunning = false;
   timerSeconds = timerPreset * 60;
   dom.timerStartBtn.textContent = 'Start';
   updateTimerDisplay();
+  saveTimerState();
 }
 
 function setTimerPreset(minutes) {
   timerPreset = minutes;
   timerSeconds = minutes * 60;
   clearInterval(timerInterval);
+  timerInterval = null;
   timerRunning = false;
   dom.timerStartBtn.textContent = 'Start';
   updateTimerDisplay();
+  saveTimerState();
   document.querySelectorAll('.timer-preset').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.minutes) === minutes);
   });
@@ -2573,7 +2646,57 @@ function bindEvents() {
   document.querySelectorAll('.timer-preset').forEach(btn => {
     btn.addEventListener('click', () => setTimerPreset(parseInt(btn.dataset.minutes)));
   });
-  updateTimerDisplay();
+
+  // Initialize timer state from local storage
+  loadTimerState();
+  if (timerRunning) {
+    timerRunning = false;
+    startTimer();
+  } else {
+    updateTimerDisplay();
+  }
+
+  // Listen for storage changes from popup/other tabs for Pomodoro sync
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'nexus-timer') {
+      loadTimerState();
+      updateTimerDisplay();
+      
+      document.querySelectorAll('.timer-preset').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.minutes) === timerPreset);
+      });
+      
+      dom.timerStartBtn.textContent = timerRunning ? 'Pause' : 'Start';
+      
+      if (timerRunning) {
+        if (!timerInterval) {
+          timerInterval = setInterval(() => {
+            timerSeconds--;
+            updateTimerDisplay();
+            if (timerSeconds <= 0) {
+              clearInterval(timerInterval);
+              timerInterval = null;
+              timerRunning = false;
+              dom.timerStartBtn.textContent = 'Start';
+              playTimerBeep();
+              updateTimerDisplay();
+              saveTimerState();
+              
+              const alertContainer = document.getElementById('accessibilityAlert');
+              if (alertContainer) {
+                alertContainer.textContent = "Focus session completed! Time to take a break.";
+              }
+            }
+          }, 1000);
+        }
+      } else {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+      }
+    }
+  });
 
   // V3 Widget Bindings
   dom.todoToggle.addEventListener('click', toggleTodoWidget);

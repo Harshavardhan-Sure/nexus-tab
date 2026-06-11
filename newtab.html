@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>New Tab</title>
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.google.com">
@@ -225,7 +226,7 @@
         <div class="search-box">
           <span id="enginePrefix" class="engine-prefix" aria-hidden="true"></span>
           <span class="engine-prefix-divider" aria-hidden="true"></span>
-          <input type="text" id="searchInput" class="search-input" placeholder="Search anything..." autocomplete="off" spellcheck="false">
+          <input type="text" id="searchInput" class="search-input" placeholder="Search anything..." autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocompleteDropdown">
         </div>
         <div class="autocomplete-dropdown" id="autocompleteDropdown" role="listbox"></div>
       </div>
@@ -280,7 +281,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       </button>
       <div class="timer-panel" id="timerPanel">
-        <div class="timer-display" id="timerDisplay">25:00</div>
+        <div class="timer-display" id="timerDisplay" role="timer" aria-live="off" aria-label="Timer: 25 minutes">25:00</div>
         <div class="timer-presets">
           <button class="timer-preset active" data-minutes="25">Focus</button>
           <button class="timer-preset" data-minutes="5">Short</button>
@@ -398,6 +399,9 @@
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Accessibility Live Region for Alerts -->
+  <div id="accessibilityAlert" aria-live="assertive" role="alert" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;"></div>
 
   <script src="quotes.js" defer></script>
   <script src="engine-icons.js" defer></script>

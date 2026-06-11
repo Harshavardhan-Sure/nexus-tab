@@ -26,6 +26,30 @@
       <input id="popupSearchInput" type="text" placeholder="Search anything..." autocomplete="off">
     </form>
 
+    <!-- Active Timer Widget -->
+    <section id="popupTimerSection" class="popup-timer-section" style="display: none;">
+      <div class="section-title">Active Timer</div>
+      <div class="popup-timer-card">
+        <div class="popup-timer-info">
+          <span id="popupTimerDisplay" class="popup-timer-clock">25:00</span>
+          <span id="popupTimerLabel" class="popup-timer-status">Idle</span>
+        </div>
+        <div class="popup-timer-controls">
+          <button id="popupTimerStartBtn" class="popup-timer-btn" type="button">Start</button>
+          <button id="popupTimerResetBtn" class="popup-timer-btn popup-btn-reset" type="button">Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Searches -->
+    <section id="popupRecentSection" class="popup-recent-section" style="display: none;">
+      <div class="section-header-row">
+        <div class="section-title">Recent Searches</div>
+        <button id="popupClearRecentBtn" class="popup-clear-link" type="button">Clear all</button>
+      </div>
+      <div id="popupRecentItems" class="popup-recent-list"></div>
+    </section>
+
     <section>
       <div class="section-title">Quick Links</div>
       <div id="popupQuickLinks" class="popup-links"></div>

@@ -1,0 +1,27 @@
+{
+  "name": "Nexus Tab",
+  "short_name": "Nexus Tab",
+  "description": "A premium, distraction-free search dashboard for your browser's new tab page.",
+  "start_url": "./newtab.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#17171d",
+  "theme_color": "#3ecf8e",
+  "icons": [
+    {
+      "src": "icons/icon16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}
