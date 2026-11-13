@@ -986,6 +986,36 @@ body.catalog-open .greeting {
   transition: all var(--transition-fast);
 }
 
+.focus-btn {
+  position: fixed;
+  top: 16px;
+  right: 104px;
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.focus-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
+.focus-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
 .settings-btn:hover {
   color: var(--text-primary);
   border-color: var(--border-default);
@@ -1135,6 +1165,73 @@ body.catalog-open .greeting {
   gap: 10px;
   align-items: flex-start;
   flex-wrap: wrap;
+}
+
+.color-picker-extra {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.color-hex-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  gap: 6px;
+  transition: border-color var(--transition-fast);
+}
+
+.color-hex-group:focus-within {
+  border-color: var(--accent);
+}
+
+.color-hex-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.color-hex-input {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 72px;
+  outline: none;
+  text-transform: uppercase;
+}
+
+.btn-extract-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-extract-color:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.btn-extract-color svg {
+  color: var(--accent);
 }
 
 /* Custom color input — styled as a swatch with label */
@@ -3519,4 +3616,28 @@ body.theme-light .toast {
 
 .toast-close:hover {
   color: var(--text-primary);
+}
+
+/* ================================================================
+   FOCUS MODE (ZEN)
+   ================================================================ */
+body.focus-mode #greetingSection,
+body.focus-mode #quickLinks,
+body.focus-mode #engineChips,
+body.focus-mode #recentSearches,
+body.focus-mode #quoteSection,
+body.focus-mode #widgetDock,
+body.focus-mode #weatherWidget,
+body.focus-mode #bgAttribution {
+  display: none !important;
+}
+
+body.focus-mode .search-section {
+  gap: 1.5rem;
+}
+
+body.focus-mode .focus-btn {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
 }

@@ -150,6 +150,7 @@ const DEFAULT_SETTINGS = {
   backgroundPosition: 'center',
   layoutDensity: 'balanced',
   hasSeenOnboarding: false,
+  focusMode: false,
   showWeather: true,
   weatherUnit: 'celsius',
   weatherLocation: { name: 'New York', latitude: 40.7128, longitude: -74.006 },

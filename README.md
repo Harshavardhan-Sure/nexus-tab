@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
 [![Manifest Version](https://img.shields.io/badge/Manifest-V3-blue.svg)](manifest.json)
-[![Version](https://img.shields.io/badge/Version-1.4.0-purple.svg)](manifest.json)
+[![Version](https://img.shields.io/badge/Version-1.5.0-purple.svg)](manifest.json)
 
 **Nexus Tab** is a beautiful, distraction-free dashboard that replaces your default new tab page. It helps you search faster and stay organized with built-in productivity tools like a Pomodoro timer, quick notes, and a checklist.
 
@@ -18,7 +18,8 @@
   - **Sticky Notes:** Quick text pad that auto-saves your thoughts and scratch ideas.
   - **To-Do List:** Interactive task tracker to check off your daily goals.
 - **🎨 Premium Customization & Aesthetics:**
-  - **Curated Accents:** Color coordinate your dashboard (Emerald, Blue, Purple, Amber, Rose, or Cyan).
+  - **Curated & Full Custom Accents:** Color coordinate your dashboard with presets (Emerald, Blue, Purple, Amber, Rose, Cyan), a full color picker, custom hex input, or auto-match your wallpaper palette.
+  - **Zen Focus Mode:** Instant distraction-free mode via dedicated button, `Alt` + `F`, command palette, or settings.
   - **Light/Dark Theme:** Flawless transition between themes.
   - **Custom Backgrounds:** Upload any image and dial in the visual aesthetic with interactive **blur** and **dim (opacity)** controls.
   - **Layout Density:** Switch between Compact, Balanced, or Spacious views.
@@ -38,6 +39,7 @@
 | `Esc` | Clear active search |
 | `Enter` | Perform search using the active engine |
 | `Ctrl` + `K` | Open command palette |
+| `Alt` + `F` | Toggle Focus Mode (Zen) |
 | `[prefix] [query]` | Quick search with specific engine (e.g., `gh typescript`) |
 | `set [prefix]` | Set active engine as the default (e.g., `set ddg`) |
 

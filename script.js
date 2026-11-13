@@ -95,6 +95,7 @@ function cacheDom() {
     quoteSection:   $('quoteSection'),
     quoteText:      $('quoteText'),
     quoteAuthor:    $('quoteAuthor'),
+    focusBtn:       $('focusBtn'),
     helpBtn:        $('helpBtn'),
     settingsBtn:    $('settingsBtn'),
     settingsPanel:  $('settingsPanel'),
@@ -304,10 +305,22 @@ function detectIncognito() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  ACCENT COLOR
+//  ACCENT COLOR & WALLPAPER COLOR EXTRACTION
 // ══════════════════════════════════════════════════════════════════════
+function normalizeHexColor(val) {
+  if (!val) return null;
+  val = val.trim();
+  if (!val.startsWith('#')) val = '#' + val;
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) return val.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(val)) {
+    return ('#' + val[1] + val[1] + val[2] + val[2] + val[3] + val[3]).toLowerCase();
+  }
+  return null;
+}
+
 function applyAccentColor() {
-  const hex = settings.accentHex || ACCENT_COLORS[settings.accentColor] || '#3ecf8e';
+  const rawHex = settings.accentHex || ACCENT_COLORS[settings.accentColor] || '#3ecf8e';
+  const hex = normalizeHexColor(rawHex) || '#3ecf8e';
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -326,11 +339,113 @@ function applyAccentColor() {
     s.classList.toggle('active', s.dataset.color === settings.accentColor && isPreset);
   });
 
-  // Sync custom color input
+  // Sync custom color input & hex text input
   const customInput = $('customColorInput');
   if (customInput) {
     customInput.value = hex;
     customInput.classList.toggle('active', !isPreset);
+  }
+
+  const customHexInput = $('customColorHexInput');
+  if (customHexInput && document.activeElement !== customHexInput) {
+    customHexInput.value = hex.toUpperCase();
+  }
+}
+
+function updateExtractBgButtonVisibility() {
+  const btn = $('extractBgColorBtn');
+  if (!btn) return;
+  const hasBg = settings.hasBackground || settings.useUnsplash;
+  btn.style.display = hasBg ? 'inline-flex' : 'none';
+}
+
+function extractColorFromImage(imageUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const sampleSize = 64;
+        canvas.width = sampleSize;
+        canvas.height = sampleSize;
+        ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+        const imgData = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+
+        // Bucket colors by hue and pick one with good saturation & balanced lightness
+        let bestR = 62, bestG = 207, bestB = 142; // fallback emerald
+        let maxScore = -1;
+
+        for (let i = 0; i < imgData.length; i += 16) { // step by 4 pixels (16 values)
+          const r = imgData[i];
+          const g = imgData[i + 1];
+          const b = imgData[i + 2];
+          const a = imgData[i + 3];
+          if (a < 128) continue;
+
+          // RGB to HSL
+          const rf = r / 255, gf = g / 255, bf = b / 255;
+          const max = Math.max(rf, gf, bf), min = Math.min(rf, gf, bf);
+          const l = (max + min) / 2;
+          const d = max - min;
+          const s = max === min ? 0 : (l > 0.5 ? d / (2 - max - min) : d / (max + min));
+
+          // Favor medium-bright, saturated vibrant colors suitable for UI accents
+          // Penalize too dark (<0.25) or too washed out (>0.85) or grayscale (s < 0.2)
+          if (s < 0.2 || l < 0.25 || l > 0.85) continue;
+          const score = s * 1.5 + (1 - Math.abs(l - 0.55));
+          if (score > maxScore) {
+            maxScore = score;
+            bestR = r;
+            bestG = g;
+            bestB = b;
+          }
+        }
+
+        const toHex = (n) => n.toString(16).padStart(2, '0');
+        resolve(`#${toHex(bestR)}${toHex(bestG)}${toHex(bestB)}`);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => reject(new Error('Failed to load image for color extraction'));
+    img.src = imageUrl;
+  });
+}
+
+async function extractColorFromBackground() {
+  let url = null;
+  if (settings.useUnsplash) {
+    url = getDailyUnsplashWallpaper();
+  } else if (settings.hasBackground) {
+    try {
+      url = await readBackgroundImage();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (!url) {
+    flashHint('No background image active', 'warning');
+    return;
+  }
+
+  try {
+    flashHint('Sampling palette...', 'info', 1200);
+    const hex = await extractColorFromImage(url);
+    if (hex) {
+      settings.accentColor = 'custom';
+      settings.accentHex = hex;
+      saveSettings();
+      applyAccentColor();
+      updateSearchEnginePrefix();
+      renderChips();
+      flashHint(`Matched wallpaper accent (${hex.toUpperCase()})`, 'success');
+    }
+  } catch (err) {
+    console.error('Wallpaper color extraction failed', err);
+    flashHint('Could not extract color from background', 'error');
   }
 }
 
@@ -553,6 +668,7 @@ function renderQuote() {
 //  VISIBILITY SETTINGS
 // ══════════════════════════════════════════════════════════════════════
 const TOGGLE_MAP = {
+  toggleFocusMode:       'focusMode',
   toggleClock:           'showClock',
   toggleWeather:          'showWeather',
   toggleGreeting:        'showGreeting',
@@ -568,7 +684,28 @@ const TOGGLE_MAP = {
   toggle24hClock:        'use24hClock',
 };
 
+function applyFocusMode() {
+  const isFocus = Boolean(settings.focusMode);
+  document.body.classList.toggle('focus-mode', isFocus);
+  if (dom.focusBtn) {
+    dom.focusBtn.classList.toggle('active', isFocus);
+    dom.focusBtn.setAttribute('aria-pressed', isFocus ? 'true' : 'false');
+    dom.focusBtn.title = isFocus ? 'Exit Focus Mode (Alt+F)' : 'Focus Mode (Alt+F)';
+  }
+}
+
+function toggleFocusMode(forceState) {
+  const nextState = typeof forceState === 'boolean' ? forceState : !settings.focusMode;
+  settings.focusMode = nextState;
+  saveSettings();
+  applyFocusMode();
+  applyVisibilitySettings();
+  flashHint(nextState ? 'Focus mode enabled (Zen)' : 'Focus mode disabled', 'info', 1800);
+}
+
 function applyVisibilitySettings() {
+  applyFocusMode();
+
   if (dom.clockSection) {
     dom.clockSection.style.display = settings.showClock ? '' : 'none';
   }
@@ -583,7 +720,7 @@ function applyVisibilitySettings() {
 
   Object.entries(TOGGLE_MAP).forEach(([elId, key]) => {
     const el = $(elId);
-    if (el) el.checked = settings[key];
+    if (el) el.checked = Boolean(settings[key]);
   });
 
   if (dom.customNameInput) {
@@ -1894,6 +2031,7 @@ function ensureSettingsInitialized() {
   initWeather();
   applyLayoutDensity();
   applyBackgroundControls();
+  updateExtractBgButtonVisibility();
   
   if (dom.clearBgBtn) {
     dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : (settings.hasBackground ? 'inline-block' : 'none');
@@ -1923,7 +2061,7 @@ function bindSettingsListeners() {
     renderChips();
   });
 
-  // Custom color input
+  // Custom color input (native color picker)
   const customColorInput = $('customColorInput');
   if (customColorInput) {
     customColorInput.addEventListener('input', () => {
@@ -1934,6 +2072,41 @@ function bindSettingsListeners() {
       updateSearchEnginePrefix();
       renderChips();
     });
+  }
+
+  // Custom hex text input
+  const customColorHexInput = $('customColorHexInput');
+  if (customColorHexInput) {
+    const commitHexChange = () => {
+      const normalized = normalizeHexColor(customColorHexInput.value);
+      if (normalized) {
+        settings.accentColor = 'custom';
+        settings.accentHex = normalized;
+        saveSettings();
+        applyAccentColor();
+        updateSearchEnginePrefix();
+        renderChips();
+      } else {
+        // Revert to current valid hex
+        customColorHexInput.value = (settings.accentHex || '#3ecf8e').toUpperCase();
+      }
+    };
+
+    customColorHexInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitHexChange();
+        customColorHexInput.blur();
+      }
+    });
+
+    customColorHexInput.addEventListener('blur', commitHexChange);
+  }
+
+  // Match Wallpaper color extraction button
+  const extractBgBtn = $('extractBgColorBtn');
+  if (extractBgBtn) {
+    extractBgBtn.addEventListener('click', extractColorFromBackground);
   }
 
   // Display toggles
@@ -2442,6 +2615,8 @@ async function clearAllData() {
 function getCommandDefinitions() {
   const baseCommands = [
     { label: 'Focus Search', hint: '/', keywords: 'search focus input', action: () => dom.searchInput.focus() },
+    { label: 'Toggle Focus Mode (Zen)', hint: 'Alt+F', keywords: 'zen focus distraction clean minimal', action: () => toggleFocusMode() },
+    { label: 'Match Accent to Wallpaper', hint: 'color', keywords: 'accent color palette match wallpaper extract', action: () => extractColorFromBackground() },
     { label: 'Open Appearance Settings', hint: 'settings', keywords: 'theme density background appearance', action: () => { openSettings(); activateSettingsTab('appearance'); } },
     { label: 'Open Links Settings', hint: 'settings', keywords: 'quick links shortcuts', action: () => { openSettings(); activateSettingsTab('links'); } },
     { label: 'Open Engine Settings', hint: 'settings', keywords: 'custom engines search stats', action: () => { openSettings(); activateSettingsTab('engines'); } },
@@ -2625,6 +2800,11 @@ function bindEvents() {
     saveRecentSearches();
     hideRecentSearches();
   });
+
+  // Focus mode button
+  if (dom.focusBtn) {
+    dom.focusBtn.addEventListener('click', () => toggleFocusMode());
+  }
 
   // Settings panel toggle
   dom.settingsBtn.addEventListener('click', openSettings);
@@ -2822,6 +3002,13 @@ function handleGlobalKeydown(e) {
     return;
   }
 
+  // Alt + F toggles Focus Mode
+  if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'f') {
+    e.preventDefault();
+    toggleFocusMode();
+    return;
+  }
+
   if (e.key === 'Escape') {
     if (isOverlayOpen(dom.commandOverlay)) { closeCommandPalette(); return; }
     if (isOverlayOpen(dom.helpOverlay)) { closeHelp(); return; }
@@ -3011,6 +3198,7 @@ function clearBackgroundUI() {
   if (dom.bgAttribution) {
     dom.bgAttribution.style.display = 'none';
   }
+  updateExtractBgButtonVisibility();
 }
 
 function applyBackground(dataUrl) {
@@ -3020,6 +3208,7 @@ function applyBackground(dataUrl) {
   if (dom.clearBgBtn) {
     dom.clearBgBtn.style.display = settings.useUnsplash ? 'none' : 'inline-block';
   }
+  updateExtractBgButtonVisibility();
 
   // Attribution
   if (settings.useUnsplash && dom.bgAttribution && dom.attributionLink) {
